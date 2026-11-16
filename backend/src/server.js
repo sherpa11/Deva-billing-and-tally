@@ -8,6 +8,10 @@ const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/error');
 
+// Models for initial database validation & bootstrap
+const User = require('./models/User');
+const Settings = require('./models/Settings');
+
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -21,8 +25,10 @@ const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
-// Initialize MongoDB Connection
-connectDB();
+// Initialize MongoDB Connection in background
+connectDB().catch((err) => {
+  console.error('[Background DB Connection Init Error]:', err.message);
+});
 
 // Middleware
 app.use(cors());
@@ -33,20 +39,59 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Ensure database connection on serverless API invocations
-app.use('/api', async (req, res, next) => {
-  if (mongoose.connection.readyState !== 1) {
-    try {
-      await connectDB();
-    } catch (err) {
-      console.error('[DB Reconnect Failed]:', err.message);
+// Bootstrap default user/settings once on an empty database without modifying existing data
+let isInitialized = false;
+const ensureInitialDefaults = async () => {
+  if (isInitialized) return;
+  try {
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      await User.create({
+        username: 'admin',
+        password: 'Admin@123',
+        name: 'R. தேவதாஸ் (உரிமையாளர்)',
+        role: 'ADMIN',
+        phone: '94433 18359'
+      });
+      console.log('[Bootstrap] Initial Admin user verified: admin / Admin@123');
     }
+
+    const settingsCount = await Settings.countDocuments();
+    if (settingsCount === 0) {
+      await Settings.create({
+        storeName: 'தேவா & கோ',
+        tagline: 'தக்காளி & காய்கனி கமிஷன் மண்டி',
+        proprietor: 'R. தேவதாஸ்',
+        address: '54 A, அண்ணல் காந்தி மார்க்கெட், திண்டுக்கல் – 624 001',
+        phones: ['94433 18359', '95853 56765'],
+        footerNote: 'தாங்கள் வருகை நல்வரவு !',
+        defaultCommissionRate: 10,
+        buyerBillFormat: 'square',
+        supplierBillFormat: 'pad'
+      });
+      console.log('[Bootstrap] Initial Store Settings verified for தேவா & கோ');
+    }
+    isInitialized = true;
+  } catch (err) {
+    console.error('[Bootstrap Defaults Error]:', err.message);
+  }
+};
+
+// Global Request Middleware: Guarantee DB connection is ready before route handlers execute
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    if (!isInitialized && mongoose.connection.readyState === 1) {
+      await ensureInitialDefaults();
+    }
+  } catch (err) {
+    console.error('[DB Request Middleware Error]:', err.message);
   }
   next();
 });
 
-// Root endpoint - API status & documentation
-app.get('/', (req, res) => {
+// Root endpoint - API status, live DB ping & documentation
+app.get('/', async (req, res) => {
   const frontendDist = path.join(__dirname, '../../frontend/dist');
   const indexPath = path.join(frontendDist, 'index.html');
 
@@ -54,9 +99,24 @@ app.get('/', (req, res) => {
     return res.sendFile(indexPath);
   }
 
-  const dbState = mongoose.connection.readyState;
+  let isDbConnected = false;
+  let pingLatencyMs = null;
   const dbStatusMap = { 0: 'Disconnected', 1: 'Connected', 2: 'Connecting', 3: 'Disconnecting' };
-  const isDbConnected = dbState === 1;
+
+  try {
+    await connectDB();
+    if (mongoose.connection.readyState === 1) {
+      const startTime = Date.now();
+      await mongoose.connection.db.command({ ping: 1 });
+      pingLatencyMs = Date.now() - startTime;
+      isDbConnected = true;
+    }
+  } catch (err) {
+    console.error('[Root Ping Command Error]:', err.message);
+  }
+
+  const dbState = mongoose.connection.readyState;
+  const dbStatusLabel = isDbConnected ? 'Connected' : (dbStatusMap[dbState] || 'Disconnected');
 
   if (req.accepts('html')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -90,7 +150,7 @@ app.get('/', (req, res) => {
 <body>
   <div class="container">
     <span class="badge ${isDbConnected ? 'badge-ok' : 'badge-warn'}">
-      ● ${isDbConnected ? 'Operational' : 'Database Initializing'}
+      ● ${isDbConnected ? 'Operational' : 'Database Disconnected'}
     </span>
     <h1>தேவா & கோ – தக்காளி & காய்கனி கமிஷன் மண்டி</h1>
     <p class="subtitle">DEVA & CO – Tomato Wholesale Billing & Tally REST API</p>
@@ -102,13 +162,13 @@ app.get('/', (req, res) => {
       </div>
       <div class="card">
         <div class="card-label">Database Status</div>
-        <div class="card-val" style="color: ${isDbConnected ? '#176B45' : '#D99A36'};">${dbStatusMap[dbState] || 'Unknown'}</div>
+        <div class="card-val" style="color: ${isDbConnected ? '#176B45' : '#D99A36'};">${dbStatusLabel} ${pingLatencyMs !== null ? `(${pingLatencyMs}ms)` : ''}</div>
       </div>
     </div>
 
     <div class="endpoints-title">Verified API Endpoints</div>
     <ul>
-      <li><span>Health Check (System & DB)</span> <a href="/api/health">/api/health</a></li>
+      <li><span>Health Check (System & DB Ping)</span> <a href="/api/health">/api/health</a></li>
       <li><span>Mandi Store Settings</span> <a href="/api/settings">/api/settings</a></li>
       <li><span>Authentication Login</span> <code>POST /api/auth/login</code></li>
       <li><span>Operations Dashboard Stats</span> <code>GET /api/dashboard/stats</code></li>
@@ -130,8 +190,11 @@ app.get('/', (req, res) => {
     status: 'online',
     version: '1.0.0',
     database: {
-      status: dbStatusMap[dbState] || 'unknown',
-      readyState: dbState
+      status: isDbConnected ? 'connected' : 'disconnected',
+      verifiedOperation: isDbConnected,
+      pingLatencyMs: pingLatencyMs,
+      readyState: dbState,
+      databaseName: mongoose.connection.name || null
     },
     endpoints: {
       health: '/api/health',
@@ -148,8 +211,25 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health check endpoint with database connectivity status (safe, no secrets)
-app.get('/api/health', (req, res) => {
+// Health check endpoint with real round-trip database ping (safe, no secrets)
+app.get('/api/health', async (req, res) => {
+  let isDbConnected = false;
+  let pingLatencyMs = null;
+  let dbName = null;
+
+  try {
+    const startTime = Date.now();
+    await connectDB();
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.db.command({ ping: 1 });
+      pingLatencyMs = Date.now() - startTime;
+      isDbConnected = true;
+      dbName = mongoose.connection.name;
+    }
+  } catch (err) {
+    console.error('[Health Check DB Ping Error]:', err.message);
+  }
+
   const dbState = mongoose.connection.readyState;
   const dbStatusMap = {
     0: 'disconnected',
@@ -158,14 +238,15 @@ app.get('/api/health', (req, res) => {
     3: 'disconnecting'
   };
 
-  const isDbConnected = dbState === 1;
-
   res.status(isDbConnected ? 200 : 503).json({
     status: isDbConnected ? 'healthy' : 'degraded',
     application: 'DEVA & CO Billing & Tally API',
     business: 'தேவா & கோ – தக்காளி & காய்கனி கமிஷன் மண்டி',
     database: {
-      status: dbStatusMap[dbState] || 'unknown',
+      status: isDbConnected ? 'connected' : (dbStatusMap[dbState] || 'disconnected'),
+      verifiedOperation: isDbConnected,
+      databaseName: dbName,
+      pingLatencyMs: pingLatencyMs,
       readyState: dbState
     },
     uptime: Math.floor(process.uptime()),
