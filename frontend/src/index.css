@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F6F8F5;
+    color: #25332C;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Theme utility classes for absolute color fidelity */
+.bg-forest-600 {
+  background-color: #176B45 !important;
+}
+.hover\:bg-forest-700:hover {
+  background-color: #125538 !important;
+}
+.bg-forest-50 {
+  background-color: #EAF4ED !important;
+}
+.bg-forest-100 {
+  background-color: #EAF4ED !important;
+}
+.text-forest-600 {
+  color: #176B45 !important;
+}
+.text-forest-700 {
+  color: #125538 !important;
+}
+.border-forest-600 {
+  border-color: #176B45 !important;
+}
+.border-forest-200 {
+  border-color: #CBE5D3 !important;
+}
+
+/* Primary Button Helper */
+.btn-forest-primary {
+  background-color: #176B45 !important;
+  color: #FFFFFF !important;
+  transition: background-color 0.15s ease-in-out;
+}
+.btn-forest-primary:hover {
+  background-color: #125538 !important;
+}
+
+/* Secondary Button Helper */
+.btn-forest-secondary {
+  background-color: #FFFFFF !important;
+  color: #25332C !important;
+  border: 1px solid #E5EBE6 !important;
+  transition: all 0.15s ease-in-out;
+}
+.btn-forest-secondary:hover {
+  background-color: #F0F4F1 !important;
+}
+
+/* Pleasant action buttons matching reference design - Compact & refined */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0 0.45rem;
+  height: 1.75rem; /* 28px compact height */
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  border-width: 1px;
+  line-height: 1;
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+}
+.action-btn:active {
+  transform: scale(0.96);
+}
+
+.action-btn-ledger {
+  background-color: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #334155;
+}
+.action-btn-ledger:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+
+.action-btn-bill {
+  background-color: #FFF5F5;
+  border-color: #FECDD3;
+  color: #BE123C;
+}
+.action-btn-bill:hover {
+  background-color: #FFE4E6;
+  border-color: #FDA4AF;
+  color: #9F1239;
+}
+
+.action-btn-pay {
+  background-color: #F0F9FF;
+  border-color: #BAE6FD;
+  color: #0369A1;
+}
+.action-btn-pay:hover {
+  background-color: #E0F2FE;
+  border-color: #7DD3FC;
+  color: #075985;
+}
+
+.action-btn-edit {
+  background-color: #FFFBEB;
+  border-color: #FDE68A;
+  color: #B45309;
+}
+.action-btn-edit:hover {
+  background-color: #FEF3C7;
+  border-color: #FCD34D;
+  color: #92400E;
+}
+
+.action-btn-delete {
+  background-color: #FEF2F2;
+  border-color: #FECACA;
+  color: #DC2626;
+}
+.action-btn-delete:hover {
+  background-color: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #B91C1C;
+}
+
+/* Pleasant table row styling */
+.pleasant-table-row {
+  transition: background-color 0.12s ease-in-out;
+}
+.pleasant-table-row:hover {
+  background-color: #F3F8F5 !important;
+}
+
+/* Pleasant card lift on hover */
+.pleasant-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.pleasant-card:hover {
+  border-color: #CBE5D3;
+  box-shadow: 0 4px 12px rgba(23, 107, 69, 0.06);
+}
+
+/* Print specific styles */
+@media print {
+  body {
+    background: transparent !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #F6F8F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #D5E0D8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #AAB9AF;
+}
