@@ -1,10 +1,30 @@
-import React, { useRef, useState } from 'react';
-import { Printer, X } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Printer, X, ChevronDown, ImageDown, Monitor, Loader2 } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { downloadBillImage } from '../utils/billImageDownload';
 
 const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, endDate }) => {
   const { settings } = useSettings();
+  const printAreaRef = useRef();
+  const dropdownRef = useRef();
   const [printFormat, setPrintFormat] = useState('a4'); // 'a4' or 'thermal'
+  const [showOptions, setShowOptions] = useState(false);
+  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowOptions(false);
+      }
+    };
+    if (showOptions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showOptions]);
 
   if (!isOpen || !buyer) return null;
 
@@ -16,6 +36,32 @@ const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, 
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
+  };
+
+  const handleDownloadImage = async () => {
+    setShowOptions(false);
+    if (!printAreaRef.current) return;
+
+    setIsDownloadingImage(true);
+    const safeBuyerName = (buyer.name || 'Customer')
+      .trim()
+      .replace(/[\/\s]+/g, '_')
+      .replace(/[^a-zA-Z0-9_\-\u0B80-\u0BFF]/g, '');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const filename = `Deva_Statement_${safeBuyerName}_${todayStr}.png`;
+
+    await downloadBillImage(printAreaRef.current, {
+      filename,
+      targetWidthPx: printFormat === 'thermal' ? 302.36 : 794,
+      targetHeightPx: null,
+      shareTitle: `Statement - ${safeBuyerName}`,
+      onStatusChange: (msg) => {
+        setStatusMessage(msg);
+        if (msg) setTimeout(() => setStatusMessage(''), 4000);
+      }
+    });
+
+    setIsDownloadingImage(false);
   };
 
   return (
@@ -52,16 +98,83 @@ const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, 
             </div>
 
             <div className="flex items-center gap-2">
+              {statusMessage && (
+                <span className="text-[11px] font-bold text-forest-700 bg-forest-50 border border-forest-200/80 px-2.5 py-1 rounded-lg">
+                  {statusMessage}
+                </span>
+              )}
+
+              {/* Printing & Download Dropdown */}
+              <div className="relative inline-flex items-stretch shadow-xs rounded-xl" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-forest-600 hover:bg-forest-700 text-white rounded-l-xl text-xs font-bold shadow-md shadow-forest-600/25 transition-all cursor-pointer active:scale-95"
+                  title="Browser Print Preview"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>அச்சிடு (Print)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowOptions(!showOptions)}
+                  className="px-2 py-2 bg-forest-700 hover:bg-forest-800 text-white rounded-r-xl border-l border-forest-500/50 shadow-md shadow-forest-600/25 transition-all cursor-pointer"
+                  title="Print & Download Options"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showOptions ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Options Dropdown Menu */}
+                {showOptions && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* 1. Browser Print Preview */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowOptions(false);
+                        handlePrint();
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-colors"
+                    >
+                      <Monitor className="w-4 h-4 text-slate-600" />
+                      <div>
+                        <div className="font-bold">Browser Print Preview</div>
+                        <div className="text-[10px] text-slate-500 font-normal">Direct print dialog preview</div>
+                      </div>
+                    </button>
+
+                    {/* 2. Download Bill Image */}
+                    <button
+                      type="button"
+                      onClick={handleDownloadImage}
+                      disabled={isDownloadingImage}
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-colors disabled:opacity-50"
+                    >
+                      {isDownloadingImage ? (
+                        <Loader2 className="w-4 h-4 text-forest-600 animate-spin" />
+                      ) : (
+                        <ImageDown className="w-4 h-4 text-forest-600" />
+                      )}
+                      <div>
+                        <div className="font-bold text-forest-700">Download Statement Image</div>
+                        <div className="text-[10px] text-slate-500 font-normal">
+                          {isDownloadingImage ? 'Generating PNG...' : 'High-resolution PNG (1-click)'}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/25 transition-all"
-              >
-                <Printer className="w-4 h-4" />
-                அச்சிடு (Print)
-              </button>
-              <button
+                type="button"
                 onClick={onClose}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -71,6 +184,7 @@ const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, 
           {/* Statement Content */}
           <div className="p-8 max-h-[75vh] overflow-y-auto bg-slate-100/50 flex justify-center">
             <div
+              ref={printAreaRef}
               id="statement-printable"
               className={`bg-white p-8 text-slate-900 shadow-sm border border-slate-200 ${
                 printFormat === 'thermal' ? 'w-[80mm] p-3 text-xs' : 'w-full max-w-3xl text-sm'
