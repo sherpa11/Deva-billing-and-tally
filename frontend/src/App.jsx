@@ -23,8 +23,20 @@ const MainLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-bg text-content-secondary font-medium text-xs">
-        Loading Mandi Billing System...
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F6F8F5] text-slate-800 p-4 font-tamil">
+        <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5EBE6] p-1.5 shadow-md flex items-center justify-center mb-3">
+          <img src="/deva-logo.png" alt="DEVA & CO" className="max-h-full max-w-full object-contain" />
+        </div>
+        <h1 className="text-xl font-bold text-[#176B45] tracking-tight">
+          தேவா & கோ
+        </h1>
+        <p className="text-xs font-semibold text-slate-600 mt-0.5">
+          தக்காளி & காய்கனி கமிஷன் மண்டி
+        </p>
+        <div className="flex items-center gap-2 mt-5 text-xs font-bold text-[#176B45]">
+          <div className="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
+          <span>ஏற்றுகிறது... (Loading Mandi System...)</span>
+        </div>
       </div>
     );
   }

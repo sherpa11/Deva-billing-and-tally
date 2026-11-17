@@ -16,23 +16,43 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const verifyUser = async () => {
       if (token) {
         try {
-          const res = await api.get('/auth/me');
-          if (res.data.success) {
+          const res = await api.get('/auth/me', { timeout: 3500 });
+          if (isMounted && res.data && res.data.success) {
             setUser(res.data.user);
             localStorage.setItem('deva_user', JSON.stringify(res.data.user));
+          } else if (isMounted) {
+            logout();
           }
         } catch (err) {
-          console.error('Auth verification failed', err);
-          logout();
+          console.error('Auth verification failed or timed out:', err.message);
+          if (isMounted) {
+            logout();
+          }
         }
       }
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     };
 
     verifyUser();
+
+    // Failsafe timer: Ensure loading never hangs on a white screen
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [token]);
 
   const login = async (username, password) => {
