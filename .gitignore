@@ -23,11 +23,11 @@ backend/scripts/simulation_report_data.json
 *.rdb
 
 # Build & Distribution Outputs
-dist/
 dist-ssr/
-frontend/dist/
 frontend/dist-ssr/
 build/
+!frontend/dist/
+!backend/public/
 
 # Logs
 logs/

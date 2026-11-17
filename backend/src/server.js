@@ -39,6 +39,21 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+// Locate Frontend Distribution Directory (supporting multiple deployment structures)
+const candidateFrontendPaths = [
+  path.join(__dirname, '../public'),
+  path.join(__dirname, '../../frontend/dist'),
+  path.join(__dirname, '../dist'),
+  path.join(process.cwd(), 'backend/public'),
+  path.join(process.cwd(), 'frontend/dist'),
+  path.join(process.cwd(), 'public')
+];
+
+const frontendDist = candidateFrontendPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(__dirname, '../public');
+
+// Serve static frontend assets (CSS, JS, images, fonts)
+app.use(express.static(frontendDist));
+
 // Bootstrap default user/settings once on an empty database without modifying existing data
 let isInitialized = false;
 const ensureInitialDefaults = async () => {
@@ -90,15 +105,17 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Root endpoint - API status, live DB ping & documentation
-app.get('/', async (req, res) => {
-  const frontendDist = path.join(__dirname, '../../frontend/dist');
+// Root endpoint: Serves the actual DEVA & CO React Billing Web Application
+app.get('/', (req, res) => {
   const indexPath = path.join(frontendDist, 'index.html');
-
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
+  res.redirect('/api');
+});
 
+// API Documentation & Status Dashboard endpoint
+app.get('/api', async (req, res) => {
   let isDbConnected = false;
   let pingLatencyMs = null;
   const dbStatusMap = { 0: 'Disconnected', 1: 'Connected', 2: 'Connecting', 3: 'Disconnecting' };
@@ -112,7 +129,7 @@ app.get('/', async (req, res) => {
       isDbConnected = true;
     }
   } catch (err) {
-    console.error('[Root Ping Command Error]:', err.message);
+    console.error('[API Ping Command Error]:', err.message);
   }
 
   const dbState = mongoose.connection.readyState;
@@ -144,6 +161,8 @@ app.get('/', async (req, res) => {
     li { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 6px 10px; background: #F6F8F5; border-radius: 6px; }
     a { color: #176B45; font-weight: 600; text-decoration: none; font-family: monospace; }
     a:hover { text-decoration: underline; }
+    .btn-app { display: inline-block; margin-top: 1rem; padding: 8px 16px; background-color: #176B45; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 0.9rem; }
+    .btn-app:hover { background-color: #125538; }
     .footer { text-align: center; margin-top: 1.5rem; font-size: 0.75rem; color: #748078; }
   </style>
 </head>
@@ -155,6 +174,10 @@ app.get('/', async (req, res) => {
     <h1>தேவா & கோ – தக்காளி & காய்கனி கமிஷன் மண்டி</h1>
     <p class="subtitle">DEVA & CO – Tomato Wholesale Billing & Tally REST API</p>
     
+    <div style="margin-bottom: 1.5rem;">
+      <a href="/" class="btn-app">Open Billing Application UI</a>
+    </div>
+
     <div class="grid">
       <div class="card">
         <div class="card-label">Server Status</div>
@@ -266,7 +289,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Catch-all route handler
+// Catch-all route handler for client-side React Router (SPA)
 app.all('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({
@@ -276,13 +299,12 @@ app.all('*', (req, res) => {
     });
   }
 
-  const frontendDist = path.join(__dirname, '../../frontend/dist');
   const indexPath = path.join(frontendDist, 'index.html');
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
 
-  res.redirect('/');
+  res.redirect('/api');
 });
 
 // Error Handler
