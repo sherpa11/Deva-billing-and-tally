@@ -109,6 +109,10 @@ app.use(async (req, res, next) => {
 app.get('/', (req, res) => {
   const indexPath = path.join(frontendDist, 'index.html');
   if (fs.existsSync(indexPath)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     return res.sendFile(indexPath);
   }
   res.redirect('/api');
@@ -289,6 +293,36 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// Asset Fallback: Guarantee missing or older chunk requests receive JavaScript/CSS, never HTML
+app.get('/assets/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const assetsDir = path.join(frontendDist, 'assets');
+  const requestedPath = path.join(assetsDir, filename);
+
+  if (fs.existsSync(requestedPath)) {
+    return res.sendFile(requestedPath);
+  }
+
+  if (fs.existsSync(assetsDir)) {
+    const files = fs.readdirSync(assetsDir);
+    if (filename.endsWith('.js')) {
+      const fallbackJs = files.find(f => f.startsWith('index-') && f.endsWith('.js'));
+      if (fallbackJs) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        return res.sendFile(path.join(assetsDir, fallbackJs));
+      }
+    } else if (filename.endsWith('.css')) {
+      const fallbackCss = files.find(f => f.startsWith('index-') && f.endsWith('.css'));
+      if (fallbackCss) {
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        return res.sendFile(path.join(assetsDir, fallbackCss));
+      }
+    }
+  }
+
+  res.status(404).type('text/plain').send('Asset not found');
+});
+
 // Catch-all route handler for client-side React Router (SPA)
 app.all('*', (req, res) => {
   if (req.path.startsWith('/api')) {
@@ -299,8 +333,16 @@ app.all('*', (req, res) => {
     });
   }
 
+  if (req.path.startsWith('/assets/')) {
+    return res.status(404).type('text/plain').send('Asset not found');
+  }
+
   const indexPath = path.join(frontendDist, 'index.html');
   if (fs.existsSync(indexPath)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     return res.sendFile(indexPath);
   }
 

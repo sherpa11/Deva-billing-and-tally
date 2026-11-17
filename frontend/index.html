@@ -6,6 +6,9 @@
     <link rel="apple-touch-icon" href="/deva-logo.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>தேவா & கோ – தக்காளி & காய்கனி கமிஷன் மண்டி | Dindigul Tomato Mandi</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,6 +71,36 @@
         <div class="initial-spinner"></div>
       </div>
     </div>
+    <script>
+      // Browser cache & mount failsafe: ensure user is never stuck indefinitely on a stale bundle
+      (function() {
+        var failsafeTimer = setTimeout(function() {
+          var splash = document.querySelector('.initial-splash');
+          if (splash && !document.getElementById('mandi-failsafe-btn')) {
+            var btn = document.createElement('button');
+            btn.id = 'mandi-failsafe-btn';
+            btn.innerHTML = '🔄 புதுப்பிக்கவும் (Reload App)';
+            btn.style.cssText = 'margin-top:16px;padding:9px 18px;background:#176B45;color:#ffffff;border:none;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.15);';
+            btn.onclick = function() {
+              window.location.href = window.location.pathname + '?_v=' + Date.now();
+            };
+            splash.appendChild(btn);
+
+            // If user visited without cache-busting query and bundle didn't mount, auto-refresh once
+            if (!window.location.search.includes('_v=')) {
+              window.location.replace(window.location.pathname + '?_v=' + Date.now());
+            }
+          }
+        }, 3200);
+
+        window.addEventListener('error', function(e) {
+          if (e && e.message && (e.message.indexOf('module script') !== -1 || e.message.indexOf('MIME') !== -1)) {
+            clearTimeout(failsafeTimer);
+            window.location.replace(window.location.pathname + '?_v=' + Date.now());
+          }
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
