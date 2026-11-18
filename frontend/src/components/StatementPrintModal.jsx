@@ -4,13 +4,19 @@ import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
 
 const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, endDate }) => {
-  const { settings } = useSettings();
+  const { settings, fetchSettings } = useSettings();
   const printAreaRef = useRef();
   const dropdownRef = useRef();
   const [printFormat, setPrintFormat] = useState('a4'); // 'a4' or 'thermal'
   const [showOptions, setShowOptions] = useState(false);
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (isOpen && typeof fetchSettings === 'function') {
+      fetchSettings();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -279,8 +285,10 @@ const StatementPrintModal = ({ isOpen, onClose, buyer, transactions, startDate, 
               <div className="flex justify-between items-end mt-12 pt-6 border-t border-slate-300 text-xs font-tamil">
                 <div>வாடிக்கையாளர் கையொப்பம்</div>
                 <div className="text-right">
-                  <div>தேவா & கோ சார்பாக</div>
-                  <div className="mt-8 font-bold">உரிமையாளர் கையொப்பம்</div>
+                  <div>{settings.storeName || 'தேவா & கோ'} சார்பாக</div>
+                  <div className="mt-8 font-bold">
+                    {settings.proprietor ? `${settings.proprietor} (உரிமையாளர்)` : 'உரிமையாளர் கையொப்பம்'}
+                  </div>
                 </div>
               </div>
             </div>

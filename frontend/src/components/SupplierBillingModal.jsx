@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import api from '../api/api';
+import { useSettings } from '../context/SettingsContext';
 import { Plus, Trash2, Printer, Save, UserPlus } from 'lucide-react';
 
 const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defaultSupplierId }) => {
+  const { settings, fetchSettings } = useSettings();
+  const commissionRate = typeof settings?.defaultCommissionRate === 'number' ? settings.defaultCommissionRate : 10;
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState(defaultSupplierId || '');
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
@@ -40,6 +43,9 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
 
   useEffect(() => {
     if (isOpen) {
+      if (typeof fetchSettings === 'function') {
+        fetchSettings();
+      }
       fetchSuppliers();
       if (initialDate) setDate(initialDate);
       if (defaultSupplierId) setSelectedSupplierId(defaultSupplierId);
@@ -109,13 +115,13 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
   // Calculations
   const grossTotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-  // Auto 10% commission default
+  // Dynamic commission calculated from Business Profile Settings
   useEffect(() => {
     setDeductions((prev) => ({
       ...prev,
-      commission: Math.round(grossTotal * 0.10),
+      commission: Math.round(grossTotal * (commissionRate / 100)),
     }));
-  }, [grossTotal]);
+  }, [grossTotal, commissionRate]);
 
   const totalDeductions =
     (Number(deductions.commission) || 0) +
@@ -400,7 +406,7 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <div>
               <label className="block text-[11px] font-semibold text-content-secondary mb-1">
-                Commission (10%)
+                Commission ({commissionRate}%)
               </label>
               <input
                 type="number"

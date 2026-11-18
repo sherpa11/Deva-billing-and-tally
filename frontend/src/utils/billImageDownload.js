@@ -15,9 +15,9 @@ import { toBlob, toPng } from 'html-to-image';
  */
 export async function downloadBillImage(billElement, options = {}) {
   const {
-    filename = 'Deva_Bill.png',
-    targetWidthPx = 472.44,
-    targetHeightPx = null,
+    filename = 'Deva_Bill_A5.png',
+    targetWidthPx = 559.37, // Exact A5 portrait width (148mm @ 96 DPI)
+    targetHeightPx = 793.70, // Exact A5 portrait height (210mm @ 96 DPI)
     shareTitle = 'DEVA & CO Bill',
     onStatusChange = () => {}
   } = options;

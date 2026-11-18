@@ -35,19 +35,29 @@ exports.updateSettings = async (req, res, next) => {
       proprietor,
       address,
       phones,
+      phone1,
+      phone2,
       footerNote,
       defaultCommissionRate,
       buyerBillFormat,
       supplierBillFormat
     } = req.body;
 
-    if (storeName) settings.storeName = storeName;
-    if (tagline !== undefined) settings.tagline = tagline;
-    if (proprietor) settings.proprietor = proprietor;
-    if (address) settings.address = address;
-    if (phones && Array.isArray(phones)) settings.phones = phones;
-    if (footerNote !== undefined) settings.footerNote = footerNote;
-    if (defaultCommissionRate !== undefined) settings.defaultCommissionRate = Number(defaultCommissionRate);
+    if (storeName !== undefined && storeName !== '') settings.storeName = String(storeName).trim();
+    if (tagline !== undefined) settings.tagline = String(tagline).trim();
+    if (proprietor !== undefined && proprietor !== '') settings.proprietor = String(proprietor).trim();
+    if (address !== undefined && address !== '') settings.address = String(address).trim();
+    
+    if (Array.isArray(phones)) {
+      settings.phones = phones.map(p => String(p).trim()).filter(Boolean);
+    } else if (phone1 !== undefined || phone2 !== undefined) {
+      settings.phones = [phone1, phone2].filter(Boolean).map(p => String(p).trim());
+    }
+
+    if (footerNote !== undefined) settings.footerNote = String(footerNote).trim();
+    if (defaultCommissionRate !== undefined && !isNaN(Number(defaultCommissionRate))) {
+      settings.defaultCommissionRate = Number(defaultCommissionRate);
+    }
     if (buyerBillFormat) settings.buyerBillFormat = buyerBillFormat;
     if (supplierBillFormat) settings.supplierBillFormat = supplierBillFormat;
 

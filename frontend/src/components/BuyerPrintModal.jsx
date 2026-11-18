@@ -4,12 +4,18 @@ import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
 
 const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
-  const { settings } = useSettings();
+  const { settings, fetchSettings } = useSettings();
   const printAreaRef = useRef();
   const dropdownRef = useRef();
   const [showOptions, setShowOptions] = useState(false);
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (isOpen && typeof fetchSettings === 'function') {
+      fetchSettings();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -41,6 +47,9 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
   const buyerPhone = bill.buyerId?.phone || '';
   const dateFormatted = formatDate(bill.transactionDate || bill.createdAt);
 
+  const phone1 = Array.isArray(settings?.phones) && settings.phones[0] ? settings.phones[0] : '';
+  const phone2 = Array.isArray(settings?.phones) && settings.phones[1] ? settings.phones[1] : '';
+
   const handleDownloadImage = async () => {
     setShowOptions(false);
     if (!printAreaRef.current) return;
@@ -56,8 +65,8 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
 
     await downloadBillImage(printAreaRef.current, {
       filename,
-      targetWidthPx: 472.44, // 125mm at 96 DPI
-      targetHeightPx: printAreaRef.current.offsetHeight || 699.21,
+      targetWidthPx: 559.37, // Exact A5 portrait width (148mm @ 96 DPI)
+      targetHeightPx: 793.70, // Exact A5 portrait height (210mm @ 96 DPI)
       shareTitle: `Buyer Bill - ${safeBuyerName}`,
       onStatusChange: (msg) => {
         setStatusMessage(msg);
@@ -84,7 +93,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
         }
       ];
 
-  const totalDisplayRows = 10;
+  const totalDisplayRows = 9;
   const emptyRowsCount = Math.max(0, totalDisplayRows - items.length);
 
   // Financial calculations
@@ -100,13 +109,13 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
         {/* Backdrop */}
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs no-print" onClick={onClose} />
 
-        <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden my-4">
+        <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-4">
           {/* Header Controls (Screen only) */}
           <div className="no-print flex items-center justify-between px-5 py-3.5 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <Printer className="w-5 h-5 text-forest-700" />
               <span className="font-bold text-slate-800 text-sm font-tamil">
-                வாடிக்கையாளர் பில் அச்சிடு (Buyer Bill Print)
+                வாடிக்கையாளர் பில் அச்சிடு (Buyer Bill A5 Print)
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -122,10 +131,10 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                   type="button"
                   onClick={handlePrint}
                   className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-forest-600 hover:bg-forest-700 text-white rounded-l-xl text-xs font-bold shadow-md shadow-forest-600/25 transition-all cursor-pointer active:scale-95"
-                  title="Browser Print Preview"
+                  title="Browser Print Preview (A5)"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>அச்சிடு (Print)</span>
+                  <span>அச்சிடு (Print A5)</span>
                 </button>
 
                 <button
@@ -155,7 +164,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                       <Monitor className="w-4 h-4 text-slate-600" />
                       <div>
                         <div className="font-bold">Browser Print Preview</div>
-                        <div className="text-[10px] text-slate-500 font-normal">Direct print dialog preview</div>
+                        <div className="text-[10px] text-slate-500 font-normal">Direct A5 print dialog preview</div>
                       </div>
                     </button>
 
@@ -174,7 +183,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                       <div>
                         <div className="font-bold text-forest-700">Download Bill Image</div>
                         <div className="text-[10px] text-slate-500 font-normal">
-                          {isDownloadingImage ? 'Generating PNG...' : 'High-resolution PNG (1-click)'}
+                          {isDownloadingImage ? 'Generating PNG...' : 'High-resolution A5 PNG (1-click)'}
                         </div>
                       </div>
                     </button>
@@ -195,11 +204,11 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
 
           {/* Printable Bill Area Container */}
           <div className="p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/50">
-            {/* EXACT REPRODUCTION OF THE NEW OFFICIAL BUYER BILL */}
+            {/* EXACT REPRODUCTION OF THE NEW OFFICIAL BUYER BILL IN STANDARD A5 */}
             <div
               ref={printAreaRef}
               id="buyer-printable-bill"
-              className="bg-white text-slate-900 shadow-md font-tamil w-[125mm] min-h-[175mm] mx-auto box-border flex flex-col justify-between p-3.5 border-2 border-[#125538] rounded-2xl select-none"
+              className="bg-white text-slate-900 shadow-md font-tamil w-[148mm] min-h-[200mm] max-w-[148mm] mx-auto box-border flex flex-col justify-between p-4 border-2 border-[#125538] rounded-2xl select-none"
               style={{
                 fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
                 borderColor: '#125538'
@@ -207,7 +216,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
             >
               {/* Top Header Card */}
               <div>
-                <div className="flex items-start justify-between border-2 border-[#125538] rounded-xl p-2 mb-1.5">
+                <div className="flex items-start justify-between border-2 border-[#125538] rounded-xl p-2.5 mb-1.5">
                   {/* Left: DEVA Logo */}
                   <div className="w-20 h-16 rounded-lg border border-[#125538]/40 p-1 flex items-center justify-center shrink-0 bg-white">
                     <img
@@ -223,26 +232,30 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                       <h1 className="text-xl sm:text-2xl font-black text-[#125538] tracking-tight leading-none">
                         {settings.storeName || 'தேவா & கோ'}
                       </h1>
-                      <div className="h-4 w-px bg-[#125538]" />
-                      <div className="text-right text-[9.5px] font-black text-[#125538] leading-tight font-mono">
-                        <div>📞 94433 18359</div>
-                        <div>95853 56765</div>
-                      </div>
+                      {(phone1 || phone2) && (
+                        <>
+                          <div className="h-4 w-px bg-[#125538]" />
+                          <div className="text-right text-[10px] font-black text-[#125538] leading-tight font-mono">
+                            {phone1 && <div>📞 {phone1}</div>}
+                            {phone2 && <div>{phone2}</div>}
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    <p className="text-[11px] font-bold text-[#125538] mt-1 leading-tight">
-                      {settings.tagline || 'தக்காளி & காய்கறி கமிஷன் மண்டி'}
+                    <p className="text-xs font-bold text-[#125538] mt-1 leading-tight">
+                      {settings.tagline || 'தக்காளி & காய்கனி கமிஷன் மண்டி'}
                     </p>
-                    <p className="text-[9px] font-semibold text-slate-700 mt-0.5 leading-tight">
+                    <p className="text-[10px] font-semibold text-slate-700 mt-0.5 leading-tight">
                       {settings.address || '54 A, அண்ணல் காந்தி மார்க்கெட், திண்டுக்கல் - 624 001'}
                     </p>
                   </div>
                 </div>
 
                 {/* Proprietor Curved Banner */}
-                <div className="flex justify-center my-1">
+                <div className="flex justify-center my-1.5">
                   <div className="bg-[#e4f3ea] border border-[#125538]/30 px-6 py-0.5 rounded-full text-center shadow-2xs">
-                    <span className="text-[11px] font-black text-slate-800">
+                    <span className="text-xs font-black text-slate-800">
                       Prop: <span className="text-red-600 font-black">{settings.proprietor || 'R.தேவதாஸ்'}</span>
                     </span>
                   </div>
@@ -312,7 +325,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                   </tbody>
                 </table>
 
-                {/* Financial Summary Section - Exactly matching image 2 */}
+                {/* Financial Summary Section */}
                 <div className="border-2 border-[#125538] border-t-0 text-[11px] font-bold">
                   {/* Row 1: இன்றைய மொத்தம் */}
                   <div className="flex border-b border-[#125538] h-6 items-center">
@@ -371,7 +384,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                 <div className="flex items-center justify-center gap-2">
                   <div className="h-0.5 w-12 bg-[#125538]/50" />
                   <span className="text-xs font-black text-[#125538] tracking-wider">
-                    நன்றி மீண்டும் வருக
+                    {settings.footerNote || 'தாங்கள் வருகை நல்வரவு !'}
                   </span>
                   <div className="h-0.5 w-12 bg-[#125538]/50" />
                 </div>
@@ -381,12 +394,12 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
         </div>
       </div>
 
-      {/* Direct Print CSS for New Buyer Bill */}
+      {/* Direct Print CSS for New Buyer Bill (Standard A5 Portrait) */}
       <style>{`
         @media print {
           @page {
-            size: 125mm 185mm;
-            margin: 0mm;
+            size: A5 portrait;
+            margin: 5mm;
           }
           body * {
             visibility: hidden;
@@ -398,15 +411,19 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
             position: fixed;
             left: 0;
             top: 0;
-            width: 125mm !important;
-            min-height: 180mm !important;
+            width: 138mm !important;
+            max-width: 138mm !important;
+            height: 200mm !important;
+            max-height: 200mm !important;
             margin: 0 !important;
-            padding: 4.5mm !important;
+            padding: 4mm !important;
             border: 2px solid #125538 !important;
             border-radius: 12px !important;
             box-shadow: none !important;
+            box-sizing: border-box !important;
             page-break-after: avoid;
             page-break-inside: avoid;
+            overflow: hidden !important;
           }
         }
       `}</style>
