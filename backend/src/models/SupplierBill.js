@@ -74,16 +74,32 @@ const supplierBillSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  netPayable: {
+  purchaseNetAmount: {
     type: Number,
-    required: true,
+    default: 0
+  },
+  previousBalance: {
+    type: Number,
     default: 0
   },
   oldBalance: {
     type: Number,
     default: 0
   },
+  totalPayable: {
+    type: Number,
+    default: 0
+  },
+  netPayable: {
+    type: Number,
+    required: true,
+    default: 0
+  },
   amountPaid: {
+    type: Number,
+    default: 0
+  },
+  remainingBalance: {
     type: Number,
     default: 0
   },

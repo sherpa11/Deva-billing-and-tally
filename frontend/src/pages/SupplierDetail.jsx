@@ -156,7 +156,9 @@ const SupplierDetail = ({ supplierId, onBack }) => {
                 <th className="py-3 px-4">Particulars / Crates</th>
                 <th className="py-3 px-4 text-right">Gross Value</th>
                 <th className="py-3 px-4 text-right">Deductions</th>
-                <th className="py-3 px-4 text-right">Net Payable</th>
+                <th className="py-3 px-4 text-right">Total (மொத்தம்)</th>
+                <th className="py-3 px-4 text-right">Paid (கொடுத்தது)</th>
+                <th className="py-3 px-4 text-right">Balance (மீதி)</th>
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -183,8 +185,20 @@ const SupplierDetail = ({ supplierId, onBack }) => {
                     <td className="py-3 px-4 text-right font-medium text-status-danger">
                       - ₹{(b.totalDeductions || 0).toLocaleString('en-IN')}
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-forest-600">
-                      ₹{b.netPayable.toLocaleString('en-IN')}
+                    <td className="py-3 px-4 text-right font-bold text-forest-700">
+                      ₹{(b.totalPayable !== undefined ? b.totalPayable : b.netPayable).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold text-slate-800">
+                      ₹{(b.amountPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-3 px-4 text-right font-bold ${
+                      (b.remainingBalance !== undefined ? b.remainingBalance : b.newBalance) > 0
+                        ? 'text-red-600'
+                        : (b.remainingBalance !== undefined ? b.remainingBalance : b.newBalance) < 0
+                        ? 'text-blue-700'
+                        : 'text-forest-700'
+                    }`}>
+                      ₹{(b.remainingBalance !== undefined ? b.remainingBalance : (b.newBalance || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
@@ -210,7 +224,7 @@ const SupplierDetail = ({ supplierId, onBack }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-content-secondary">
+                  <td colSpan={9} className="text-center py-8 text-content-secondary">
                     No supplier purchase bills recorded.
                   </td>
                 </tr>

@@ -11,6 +11,7 @@ exports.createSupplierBill = async (req, res, next) => {
       deductions = {},
       notes = '',
       manualOldBalance,
+      previousBalance,
       amountPaid = 0
     } = req.body;
 
@@ -57,7 +58,7 @@ exports.createSupplierBill = async (req, res, next) => {
     grossTotal = Math.round(grossTotal * 100) / 100;
 
     // Deductions
-    const commission = deductions.commission !== undefined && deductions.commission !== null
+    const commission = deductions.commission !== undefined && deductions.commission !== null && deductions.commission !== ''
       ? Number(deductions.commission)
       : Math.round(grossTotal * 0.10);
     const gate = Number(deductions.gate) || 0;
@@ -66,14 +67,23 @@ exports.createSupplierBill = async (req, res, next) => {
     const debit = Number(deductions.debit) || 0;
 
     const totalDeductions = Math.round((commission + gate + coolie + rent + debit) * 100) / 100;
-    const netPayable = Math.round((grossTotal - totalDeductions) * 100) / 100;
+    const purchaseNetAmount = Math.round((grossTotal - totalDeductions) * 100) / 100;
 
-    const oldBal = manualOldBalance !== undefined && manualOldBalance !== null && manualOldBalance !== ''
-      ? Number(manualOldBalance)
-      : Number(supplier.currentBalance || 0);
+    // Automatically carry forward supplier outstanding balance unless explicitly overridden
+    const prevBal = previousBalance !== undefined && previousBalance !== null && previousBalance !== ''
+      ? Number(previousBalance)
+      : (manualOldBalance !== undefined && manualOldBalance !== null && manualOldBalance !== ''
+        ? Number(manualOldBalance)
+        : Number(supplier.currentBalance || 0));
 
+    // மொத்தம் (Total Payable to Supplier) = Current Purchase Net + Previous Outstanding
+    const totalPayable = Math.round((purchaseNetAmount + prevBal) * 100) / 100;
+
+    // செலுத்திய தொகை (Amount Paid)
     const paid = Number(amountPaid) || 0;
-    const newBal = Math.round((oldBal + netPayable - paid) * 100) / 100;
+
+    // மீதி பாக்கி (Remaining Balance) = மொத்தம் - செலுத்திய தொகை
+    const remainingBal = Math.round((totalPayable - paid) * 100) / 100;
 
     const billNumber = await getNextSequenceValue('supplierBillNumber');
 
@@ -91,18 +101,22 @@ exports.createSupplierBill = async (req, res, next) => {
         debit
       },
       totalDeductions,
-      netPayable,
-      oldBalance: oldBal,
+      purchaseNetAmount,
+      previousBalance: prevBal,
+      oldBalance: prevBal,
+      totalPayable,
+      netPayable: totalPayable,
       amountPaid: paid,
-      newBalance: newBal,
+      remainingBalance: remainingBal,
+      newBalance: remainingBal,
       notes: notes ? notes.trim() : '',
       createdBy: req.user ? req.user._id : null
     });
 
     await bill.save();
 
-    // Update supplier
-    supplier.currentBalance = newBal;
+    // Update supplier ledger
+    supplier.currentBalance = remainingBal;
     supplier.totalPurchases = Math.round(((supplier.totalPurchases || 0) + grossTotal) * 100) / 100;
     supplier.totalPayments = Math.round(((supplier.totalPayments || 0) + paid) * 100) / 100;
     await supplier.save();
@@ -188,10 +202,15 @@ exports.voidSupplierBill = async (req, res, next) => {
 
     const supplier = await Supplier.findById(bill.supplierId);
     if (supplier) {
-      // Revert balance: subtract netPayable, add amountPaid
-      supplier.currentBalance = Math.round((supplier.currentBalance - bill.netPayable + bill.amountPaid) * 100) / 100;
+      // Revert balance: subtract current bill's net addition and add back payment
+      const billPrevBal = bill.previousBalance !== undefined ? bill.previousBalance : (bill.oldBalance || 0);
+      const billTotalPayable = bill.totalPayable !== undefined ? bill.totalPayable : (bill.netPayable || 0);
+      const billPurchaseNet = bill.purchaseNetAmount !== undefined ? bill.purchaseNetAmount : (billTotalPayable - billPrevBal);
+      const billPaid = Number(bill.amountPaid) || 0;
+
+      supplier.currentBalance = Math.round((supplier.currentBalance - billPurchaseNet + billPaid) * 100) / 100;
       supplier.totalPurchases = Math.max(0, Math.round(((supplier.totalPurchases || 0) - bill.grossTotal) * 100) / 100);
-      supplier.totalPayments = Math.max(0, Math.round(((supplier.totalPayments || 0) - bill.amountPaid) * 100) / 100);
+      supplier.totalPayments = Math.max(0, Math.round(((supplier.totalPayments || 0) - billPaid) * 100) / 100);
       await supplier.save();
     }
 

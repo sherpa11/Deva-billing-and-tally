@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Printer, X, ChevronDown, ImageDown, Monitor, Loader2 } from 'lucide-react';
+import { Printer, X, ChevronDown, ImageDown, Monitor, Loader2, Phone } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
 
@@ -45,10 +45,11 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
 
   const splitAmount = (amt) => {
     const num = Number(amt) || 0;
-    const parts = num.toFixed(2).split('.');
+    const parts = Math.abs(num).toFixed(2).split('.');
     return {
       rupees: Number(parts[0]).toLocaleString('en-IN'),
-      paise: parts[1] === '00' ? '00' : parts[1]
+      paise: parts[1] === '00' ? '00' : parts[1],
+      isNegative: num < 0
     };
   };
 
@@ -101,7 +102,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
         }
       ];
 
-  // For Standard A5 portrait size (148mm x 210mm), 8 total display rows fits cleanly without overflowing
+  // For Standard A5 portrait size (148mm x 210mm), exactly 8 total display rows matching reference pad
   const totalDisplayRows = 8;
   const emptyRowsCount = Math.max(0, totalDisplayRows - items.length);
 
@@ -111,9 +112,29 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
   const gate = Number(deductions.gate) || 0;
   const coolie = Number(deductions.coolie) || 0;
   const rent = Number(deductions.rent) || 0;
-  const debit = Number(deductions.debit) || 0;
-  const totalDeductions = Number(bill.totalDeductions) || (comm + gate + coolie + rent + debit);
-  const netPayable = Number(bill.netPayable) !== undefined ? Number(bill.netPayable) : Math.round((grossTotal - totalDeductions) * 100) / 100;
+  
+  // Previous balance / பற்று (முன் பாக்கி)
+  const prevBal = bill.previousBalance !== undefined && bill.previousBalance !== null
+    ? Number(bill.previousBalance)
+    : (bill.oldBalance !== undefined ? Number(bill.oldBalance) : (Number(deductions.debit) || 0));
+
+  // மொத்தம் (Total Payable to Supplier)
+  const totalPayable = bill.totalPayable !== undefined && bill.totalPayable !== null
+    ? Number(bill.totalPayable)
+    : (bill.netPayable !== undefined ? Number(bill.netPayable) : Math.max(0, grossTotal - (comm + gate + coolie + rent) + prevBal));
+
+  // Field 1: கொடுத்தது / செலுத்திய தொகை (Amount Paid)
+  const amountPaid = Number(bill.amountPaid) || 0;
+
+  // Field 2: மீதி பாக்கி (Remaining Balance = மொத்தம் - செலுத்திய தொகை)
+  const remainingBalance = bill.remainingBalance !== undefined && bill.remainingBalance !== null
+    ? Number(bill.remainingBalance)
+    : (bill.newBalance !== undefined ? Number(bill.newBalance) : Math.round((totalPayable - amountPaid) * 100) / 100);
+
+  const splitGross = splitAmount(grossTotal);
+  const splitTotal = splitAmount(totalPayable);
+  const splitPaid = splitAmount(amountPaid);
+  const splitRemaining = splitAmount(remainingBalance);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -216,7 +237,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
 
           {/* Printable Bill Area Container */}
           <div className="p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
-            {/* EXACT OFFICIAL SUPPLIER BILL FORMAT (STANDARD A5: 148mm x 210mm) */}
+            {/* EXACT OFFICIAL SUPPLIER BILL PAD (STANDARD A5: 148mm x 210mm) */}
             <div
               ref={printAreaRef}
               id="supplier-printable-bill"
@@ -226,8 +247,9 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                 borderColor: '#125538'
               }}
             >
-              {/* Top Header Card */}
+              {/* Top Section */}
               <div>
+                {/* Header Card */}
                 <div className="border-2 border-[#125538] rounded-xl p-2 mb-1.5 bg-white">
                   <div className="flex items-start justify-between">
                     {/* Left: DEVA Logo Box */}
@@ -249,8 +271,10 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                         {(phone1 || phone2) && (
                           <>
                             <div className="h-4 w-px bg-[#125538] mx-1.5" />
-                            <div className="flex items-center gap-1 text-[9.5px] font-black text-[#125538] leading-tight font-mono">
-                              <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#125538] text-white text-[7.5px]">📞</span>
+                            <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#125538] leading-tight font-mono">
+                              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#125538] text-white shrink-0">
+                                <Phone className="w-2 h-2 text-white fill-white" />
+                              </span>
                               <div className="text-right">
                                 {phone1 && <div>{phone1}</div>}
                                 {phone2 && <div>{phone2}</div>}
@@ -309,7 +333,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                     <tr className="border-b-2 border-[#125538] text-[#125538] font-black bg-slate-50/60">
                       <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">விலை</th>
                       <th className="border-r-2 border-[#125538] py-1 px-2 text-center w-[45%]">விவரம்</th>
-                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">எண்ணணம்</th>
+                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">எண்ணம்</th>
                       <th className="py-0 px-1 w-[23%]">
                         <div className="text-[11px] font-black border-b border-[#125538] py-0.5">மொத்தம்</div>
                         <div className="flex text-[9px] font-bold py-0.5">
@@ -360,7 +384,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                   </tbody>
                 </table>
 
-                {/* Deductions & Financial Summary Section */}
+                {/* Deductions & Financial Summary Section - EXACT REPRODUCTION OF REFERENCE DESIGN */}
                 <div className="border-2 border-[#125538] border-t-0 text-[10.5px] font-bold">
                   {/* Row 1: மொத்தத் தொகை (Gross Total) */}
                   <div className="flex border-b border-[#125538] h-6 items-center bg-[#e4f3ea]">
@@ -369,8 +393,8 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                     </div>
                     <div className="w-[23%] px-1 text-right font-mono font-black text-[#125538]">
                       <div className="flex items-center">
-                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitAmount(grossTotal).rupees}</span>
-                        <span className="w-1/3 text-center text-[9px]">{splitAmount(grossTotal).paise}</span>
+                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitGross.rupees}</span>
+                        <span className="w-1/3 text-center text-[9px]">{splitGross.paise}</span>
                       </div>
                     </div>
                   </div>
@@ -414,21 +438,46 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                     <div className="w-[77%] px-2 flex justify-between items-baseline border-r-2 border-[#125538]">
                       <span className="text-slate-800 font-bold">பற்று (முன் பாக்கி) :</span>
                       <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-2 min-w-[65px] text-right">
-                        {debit > 0 ? debit : ''}
+                        {prevBal !== 0 ? prevBal : ''}
                       </span>
                     </div>
                     <div className="w-[23%] px-1 text-right font-mono text-[9px] text-slate-700"></div>
                   </div>
 
                   {/* Row 5: மொத்தம் */}
-                  <div className="flex h-6.5 items-center bg-[#e4f3ea]">
+                  <div className="flex border-b border-[#125538] h-6.5 items-center bg-[#e4f3ea]">
                     <div className="w-[77%] px-2 text-center border-r-2 border-[#125538] font-black text-[#125538] text-[11px]">
                       மொத்தம் :
                     </div>
                     <div className="w-[23%] px-1 text-right font-mono font-black text-[#125538]">
                       <div className="flex items-center">
-                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitAmount(netPayable).rupees}</span>
-                        <span className="w-1/3 text-center text-[9px]">{splitAmount(netPayable).paise}</span>
+                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitTotal.rupees}</span>
+                        <span className="w-1/3 text-center text-[9px]">{splitTotal.paise}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 6: NEW PAYMENT ROW (கொடுத்தது & மீதி பாக்கி) EXACTLY AS IN REFERENCE DESIGN */}
+                  <div className="flex h-7 items-stretch bg-white">
+                    {/* Left 50%: கொடுத்தது : [ White Amount Box ] */}
+                    <div className="w-1/2 flex items-stretch border-r-2 border-[#125538]">
+                      <div className="w-[50%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-[10.5px]">
+                        கொடுத்தது :
+                      </div>
+                      <div className="w-[50%] px-1.5 flex items-center justify-end font-mono font-black text-slate-900 bg-white text-xs">
+                        ₹{splitPaid.rupees}.{splitPaid.paise}
+                      </div>
+                    </div>
+
+                    {/* Right 50%: மீதி பாக்கி : [ White Amount Box ] */}
+                    <div className="w-1/2 flex items-stretch">
+                      <div className="w-[50%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-[10.5px]">
+                        மீதி பாக்கி :
+                      </div>
+                      <div className={`w-[50%] px-1.5 flex items-center justify-end font-mono font-black text-xs bg-white ${
+                        remainingBalance > 0 ? 'text-red-600' : remainingBalance < 0 ? 'text-blue-700' : 'text-slate-900'
+                      }`}>
+                        {remainingBalance < 0 ? `-₹${splitRemaining.rupees}.${splitRemaining.paise}` : `₹${splitRemaining.rupees}.${splitRemaining.paise}`}
                       </div>
                     </div>
                   </div>
@@ -440,7 +489,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                 <div className="flex items-center justify-center gap-2">
                   <div className="h-0.5 w-12 bg-[#125538]/60" />
                   <span className="text-xs font-black text-[#125538] tracking-wider">
-                    {settings.footerNote || 'தாங்கள் வருகை நல்வரவு !'}
+                    {settings.footerNote || 'நன்றி மீண்டும் வருக'}
                   </span>
                   <div className="h-0.5 w-12 bg-[#125538]/60" />
                 </div>
@@ -450,7 +499,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
         </div>
       </div>
 
-      {/* Direct Print CSS for Exact A5 Supplier Bill Format (148mm x 210mm) */}
+      {/* Direct Print CSS for Reference A5 Supplier Bill Format (148mm x 210mm) */}
       <style>{`
         @media print {
           @page {
