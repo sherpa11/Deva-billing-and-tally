@@ -47,13 +47,16 @@ const Buyers = ({ onSelectBuyer }) => {
   const [printBill, setPrintBill] = useState(null);
 
   useEffect(() => {
-    fetchBuyers();
+    const handler = setTimeout(() => {
+      fetchBuyers(search);
+    }, search ? 250 : 0);
+    return () => clearTimeout(handler);
   }, [search]);
 
-  const fetchBuyers = async () => {
-    setLoading(true);
+  const fetchBuyers = async (query = search) => {
+    if (buyers.length === 0) setLoading(true);
     try {
-      const res = await api.get(`/buyers?search=${encodeURIComponent(search)}`);
+      const res = await api.get(`/buyers?search=${encodeURIComponent(query)}`);
       if (res.data.success) {
         setBuyers(res.data.buyers);
       }

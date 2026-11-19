@@ -14,10 +14,10 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
   const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
-    if (isOpen && typeof fetchSettings === 'function') {
+    if (isOpen && (!settings || Object.keys(settings).length === 0) && typeof fetchSettings === 'function') {
       fetchSettings();
     }
-  }, [isOpen]);
+  }, [isOpen, settings]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {

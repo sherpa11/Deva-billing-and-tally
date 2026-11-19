@@ -111,8 +111,9 @@ const transactionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-transactionSchema.index({ buyerId: 1, isVoid: 1, transactionDate: -1 });
+transactionSchema.index({ isVoid: 1, transactionDate: -1, createdAt: -1 });
+transactionSchema.index({ buyerId: 1, isVoid: 1, transactionDate: -1, createdAt: -1 });
+transactionSchema.index({ isVoid: 1, type: 1, transactionDate: -1 });
 transactionSchema.index({ transactionDate: 1, isVoid: 1 });
-transactionSchema.index({ type: 1, transactionDate: 1, isVoid: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

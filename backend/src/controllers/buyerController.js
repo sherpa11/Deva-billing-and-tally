@@ -38,17 +38,19 @@ exports.getBuyers = async (req, res, next) => {
     const buyers = await Buyer.find(query).sort({ name: 1 }).lean();
 
     // Fetch the latest transaction date for each buyer
-    const buyerIds = buyers.map(b => b._id);
-    const lastTxns = await Transaction.aggregate([
-      { $match: { buyerId: { $in: buyerIds }, isVoid: false } },
-      { $sort: { transactionDate: -1, createdAt: -1 } },
-      { $group: { _id: '$buyerId', lastActive: { $first: '$transactionDate' } } }
-    ]);
-
     const lastActiveMap = {};
-    lastTxns.forEach(item => {
-      lastActiveMap[item._id.toString()] = item.lastActive;
-    });
+    if (buyers.length > 0) {
+      const buyerIds = buyers.map(b => b._id);
+      const lastTxns = await Transaction.aggregate([
+        { $match: { buyerId: { $in: buyerIds }, isVoid: false } },
+        { $sort: { transactionDate: -1, createdAt: -1 } },
+        { $group: { _id: '$buyerId', lastActive: { $first: '$transactionDate' } } }
+      ]);
+
+      lastTxns.forEach(item => {
+        lastActiveMap[item._id.toString()] = item.lastActive;
+      });
+    }
 
     const enrichedBuyers = buyers.map(b => ({
       ...b,
@@ -67,18 +69,21 @@ exports.getBuyers = async (req, res, next) => {
 
 exports.getBuyerById = async (req, res, next) => {
   try {
-    const buyer = await Buyer.findById(req.params.id);
+    const [buyer, recentTransactions] = await Promise.all([
+      Buyer.findById(req.params.id).lean(),
+      Transaction.find({
+        buyerId: req.params.id,
+        isVoid: false
+      })
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .limit(20)
+        .populate('createdBy', 'name')
+        .lean()
+    ]);
+
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'வாடிக்கையாளர் கிடைக்கவில்லை (Buyer not found)' });
     }
-
-    const recentTransactions = await Transaction.find({
-      buyerId: buyer._id,
-      isVoid: false
-    })
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .limit(20)
-      .populate('createdBy', 'name');
 
     res.json({
       success: true,
@@ -167,12 +172,8 @@ exports.updateBuyer = async (req, res, next) => {
 exports.getBuyerLedger = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
-    const buyer = await Buyer.findById(req.params.id);
-    if (!buyer) {
-      return res.status(404).json({ success: false, message: 'வாடிக்கையாளர் கிடைக்கவில்லை' });
-    }
 
-    let filter = { buyerId: buyer._id, isVoid: false };
+    let filter = { buyerId: req.params.id, isVoid: false };
     if (startDate || endDate) {
       filter.transactionDate = {};
       if (startDate) {
@@ -185,9 +186,17 @@ exports.getBuyerLedger = async (req, res, next) => {
       }
     }
 
-    const transactions = await Transaction.find(filter)
-      .sort({ transactionDate: 1, createdAt: 1 })
-      .populate('createdBy', 'name');
+    const [buyer, transactions] = await Promise.all([
+      Buyer.findById(req.params.id).lean(),
+      Transaction.find(filter)
+        .sort({ transactionDate: 1, createdAt: 1 })
+        .populate('createdBy', 'name')
+        .lean()
+    ]);
+
+    if (!buyer) {
+      return res.status(404).json({ success: false, message: 'வாடிக்கையாளர் கிடைக்கவில்லை' });
+    }
 
     res.json({
       success: true,

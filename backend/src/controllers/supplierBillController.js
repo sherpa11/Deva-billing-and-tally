@@ -150,14 +150,16 @@ exports.getSupplierBills = async (req, res, next) => {
       filter.transactionDate = { $gte: start, $lte: end };
     }
 
-    const bills = await SupplierBill.find(filter)
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .populate('supplierId', 'name phone supplierCode')
-      .populate('createdBy', 'name');
-
-    const total = await SupplierBill.countDocuments(filter);
+    const [bills, total] = await Promise.all([
+      SupplierBill.find(filter)
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(Number(limit))
+        .populate('supplierId', 'name phone supplierCode')
+        .populate('createdBy', 'name')
+        .lean(),
+      SupplierBill.countDocuments(filter)
+    ]);
 
     res.json({
       success: true,
@@ -176,7 +178,8 @@ exports.getSupplierBillById = async (req, res, next) => {
   try {
     const bill = await SupplierBill.findById(req.params.id)
       .populate('supplierId', 'name phone address supplierCode')
-      .populate('createdBy', 'name');
+      .populate('createdBy', 'name')
+      .lean();
     if (!bill) {
       return res.status(404).json({ success: false, message: 'பில் கிடைக்கவில்லை' });
     }

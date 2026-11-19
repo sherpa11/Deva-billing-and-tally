@@ -20,7 +20,7 @@ exports.getSuppliers = async (req, res, next) => {
       ];
     }
 
-    const suppliers = await Supplier.find(query).sort({ name: 1 });
+    const suppliers = await Supplier.find(query).sort({ name: 1 }).lean();
     res.json({
       success: true,
       count: suppliers.length,
@@ -33,18 +33,21 @@ exports.getSuppliers = async (req, res, next) => {
 
 exports.getSupplierById = async (req, res, next) => {
   try {
-    const supplier = await Supplier.findById(req.params.id);
+    const [supplier, recentBills] = await Promise.all([
+      Supplier.findById(req.params.id).lean(),
+      SupplierBill.find({
+        supplierId: req.params.id,
+        isVoid: false
+      })
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .limit(20)
+        .populate('createdBy', 'name')
+        .lean()
+    ]);
+
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'விவசாயி / சப்ளையர் கிடைக்கவில்லை' });
     }
-
-    const recentBills = await SupplierBill.find({
-      supplierId: supplier._id,
-      isVoid: false
-    })
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .limit(20)
-      .populate('createdBy', 'name');
 
     res.json({
       success: true,
@@ -115,12 +118,8 @@ exports.updateSupplier = async (req, res, next) => {
 exports.getSupplierPurchases = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
-    const supplier = await Supplier.findById(req.params.id);
-    if (!supplier) {
-      return res.status(404).json({ success: false, message: 'விவசாயி / சப்ளையர் கிடைக்கவில்லை' });
-    }
 
-    let filter = { supplierId: supplier._id, isVoid: false };
+    let filter = { supplierId: req.params.id, isVoid: false };
     if (startDate || endDate) {
       filter.transactionDate = {};
       if (startDate) {
@@ -133,9 +132,17 @@ exports.getSupplierPurchases = async (req, res, next) => {
       }
     }
 
-    const bills = await SupplierBill.find(filter)
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .populate('createdBy', 'name');
+    const [supplier, bills] = await Promise.all([
+      Supplier.findById(req.params.id).lean(),
+      SupplierBill.find(filter)
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .populate('createdBy', 'name')
+        .lean()
+    ]);
+
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'விவசாயி / சப்ளையர் கிடைக்கவில்லை' });
+    }
 
     res.json({
       success: true,

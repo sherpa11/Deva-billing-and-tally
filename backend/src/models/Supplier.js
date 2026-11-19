@@ -38,10 +38,15 @@ const supplierSchema = new mongoose.Schema({
   },
   isActive: {
     type: Boolean,
-    default: true
+    default: true,
+    index: true
   }
 }, {
   timestamps: true
 });
+
+supplierSchema.index({ isActive: 1, name: 1 });
+supplierSchema.index({ isActive: 1, currentBalance: -1 });
+supplierSchema.index({ phone: 1 });
 
 module.exports = mongoose.model('Supplier', supplierSchema);

@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 
 import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
-import Buyers from './pages/Buyers';
-import BuyerDetail from './pages/BuyerDetail';
-import Suppliers from './pages/Suppliers';
-import SupplierDetail from './pages/SupplierDetail';
-import Outlay from './pages/Outlay';
-import History from './pages/History';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import Login from './pages/Login';
+
+// Code-split pages for lazy loading & optimal initial bundle size
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Buyers = lazy(() => import('./pages/Buyers'));
+const BuyerDetail = lazy(() => import('./pages/BuyerDetail'));
+const Suppliers = lazy(() => import('./pages/Suppliers'));
+const SupplierDetail = lazy(() => import('./pages/SupplierDetail'));
+const Outlay = lazy(() => import('./pages/Outlay'));
+const History = lazy(() => import('./pages/History'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+const PageFallback = () => (
+  <div className="flex flex-col items-center justify-center py-24 text-forest-700">
+    <div className="w-8 h-8 border-3 border-forest-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+    <span className="text-xs font-bold font-tamil text-slate-600">ஏற்றுகிறது... (Loading...)</span>
+  </div>
+);
 
 const MainLayout = () => {
   const { user, loading, isAdmin } = useAuth();
@@ -20,6 +29,20 @@ const MainLayout = () => {
   const [selectedBuyerId, setSelectedBuyerId] = useState(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // Keep-alive cache for visited top-level tabs for instant 0ms switching
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['dashboard']));
+
+  useEffect(() => {
+    if (activeTab && activeTab !== 'buyer-detail' && activeTab !== 'supplier-detail') {
+      setVisitedTabs(prev => {
+        if (prev.has(activeTab)) return prev;
+        const next = new Set(prev);
+        next.add(activeTab);
+        return next;
+      });
+    }
+  }, [activeTab]);
 
   if (loading) {
     return (
@@ -75,30 +98,69 @@ const MainLayout = () => {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4.5">
-        {activeTab === 'dashboard' && <Dashboard selectedDate={selectedDate} />}
+        <Suspense fallback={<PageFallback />}>
+          {/* 1. Dashboard Tab (Instant Keep-Alive) */}
+          {visitedTabs.has('dashboard') && (
+            <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
+              <Dashboard selectedDate={selectedDate} />
+            </div>
+          )}
 
-        {activeTab === 'buyers' && <Buyers onSelectBuyer={handleSelectBuyer} />}
-        {activeTab === 'buyer-detail' && (
-          <BuyerDetail buyerId={selectedBuyerId} onBack={handleBackToBuyers} />
-        )}
+          {/* 2. Buyers Tab (Instant Keep-Alive) */}
+          {visitedTabs.has('buyers') && (
+            <div style={{ display: activeTab === 'buyers' ? 'block' : 'none' }}>
+              <Buyers onSelectBuyer={handleSelectBuyer} />
+            </div>
+          )}
 
-        {isAdmin && activeTab === 'suppliers' && (
-          <Suppliers onSelectSupplier={handleSelectSupplier} />
-        )}
-        {isAdmin && activeTab === 'supplier-detail' && (
-          <SupplierDetail
-            supplierId={selectedSupplierId}
-            onBack={handleBackToSuppliers}
-          />
-        )}
+          {/* 2b. Buyer Detail (Dynamic) */}
+          {activeTab === 'buyer-detail' && (
+            <BuyerDetail buyerId={selectedBuyerId} onBack={handleBackToBuyers} />
+          )}
 
-        {isAdmin && activeTab === 'outlay' && <Outlay selectedDate={selectedDate} />}
+          {/* 3. Suppliers Tab (Instant Keep-Alive) */}
+          {isAdmin && visitedTabs.has('suppliers') && (
+            <div style={{ display: activeTab === 'suppliers' ? 'block' : 'none' }}>
+              <Suppliers onSelectSupplier={handleSelectSupplier} />
+            </div>
+          )}
 
-        {activeTab === 'history' && <History selectedDate={selectedDate} />}
+          {/* 3b. Supplier Detail (Dynamic) */}
+          {isAdmin && activeTab === 'supplier-detail' && (
+            <SupplierDetail
+              supplierId={selectedSupplierId}
+              onBack={handleBackToSuppliers}
+            />
+          )}
 
-        {isAdmin && activeTab === 'reports' && <Reports />}
+          {/* 4. Expenses / Outlay (Instant Keep-Alive) */}
+          {isAdmin && visitedTabs.has('outlay') && (
+            <div style={{ display: activeTab === 'outlay' ? 'block' : 'none' }}>
+              <Outlay selectedDate={selectedDate} />
+            </div>
+          )}
 
-        {isAdmin && activeTab === 'settings' && <Settings />}
+          {/* 5. History (Instant Keep-Alive) */}
+          {visitedTabs.has('history') && (
+            <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>
+              <History selectedDate={selectedDate} />
+            </div>
+          )}
+
+          {/* 6. Reports (Instant Keep-Alive) */}
+          {isAdmin && visitedTabs.has('reports') && (
+            <div style={{ display: activeTab === 'reports' ? 'block' : 'none' }}>
+              <Reports />
+            </div>
+          )}
+
+          {/* 7. Settings (Instant Keep-Alive) */}
+          {isAdmin && visitedTabs.has('settings') && (
+            <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}>
+              <Settings />
+            </div>
+          )}
+        </Suspense>
       </main>
 
       {/* Footer */}

@@ -23,17 +23,19 @@ const History = ({ selectedDate }) => {
   }, [date]);
 
   const fetchHistoryData = async () => {
-    setLoading(true);
+    if (sales.length === 0 && payments.length === 0 && purchases.length === 0) setLoading(true);
     try {
-      const [salesRes, paymentsRes, purchasesRes] = await Promise.all([
-        api.get(`/transactions?date=${date}&type=SALE`),
-        api.get(`/transactions?date=${date}&type=PAYMENT`),
-        isAdmin ? api.get(`/supplier-bills?date=${date}`) : Promise.resolve({ data: { bills: [] } }),
+      const [txnsRes, purchasesRes] = await Promise.all([
+        api.get(`/transactions?date=${date}&limit=100`),
+        isAdmin ? api.get(`/supplier-bills?date=${date}&limit=100`) : Promise.resolve({ data: { bills: [] } }),
       ]);
 
-      if (salesRes.data.success) setSales(salesRes.data.transactions);
-      if (paymentsRes.data.success) setPayments(paymentsRes.data.transactions);
-      if (purchasesRes.data?.success) setPurchases(purchasesRes.data.bills);
+      if (txnsRes.data?.success) {
+        const allTxns = txnsRes.data.transactions || [];
+        setSales(allTxns.filter(t => t.type === 'SALE'));
+        setPayments(allTxns.filter(t => t.type === 'PAYMENT'));
+      }
+      if (purchasesRes.data?.success) setPurchases(purchasesRes.data.bills || []);
     } catch (err) {
       console.error(err);
     } finally {

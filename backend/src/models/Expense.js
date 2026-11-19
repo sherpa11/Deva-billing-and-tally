@@ -38,6 +38,7 @@ const expenseSchema = new mongoose.Schema({
   timestamps: true
 });
 
+expenseSchema.index({ isVoid: 1, date: -1, createdAt: -1 });
 expenseSchema.index({ date: 1, isVoid: 1 });
 expenseSchema.index({ category: 1, date: 1 });
 

@@ -1,8 +1,16 @@
 const Settings = require('../models/Settings');
 
+let cachedSettings = null;
+let cachedSettingsTime = 0;
+const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 exports.getSettings = async (req, res, next) => {
   try {
-    let settings = await Settings.findOne();
+    if (cachedSettings && Date.now() - cachedSettingsTime < SETTINGS_CACHE_TTL_MS) {
+      return res.json({ success: true, settings: cachedSettings });
+    }
+
+    let settings = await Settings.findOne().lean();
     if (!settings) {
       settings = await Settings.create({
         storeName: 'தேவா & கோ',
@@ -15,7 +23,14 @@ exports.getSettings = async (req, res, next) => {
         buyerBillFormat: 'square',
         supplierBillFormat: 'pad'
       });
+      if (settings && typeof settings.toObject === 'function') {
+        settings = settings.toObject();
+      }
     }
+
+    cachedSettings = settings;
+    cachedSettingsTime = Date.now();
+
     res.json({ success: true, settings });
   } catch (error) {
     next(error);
@@ -24,6 +39,9 @@ exports.getSettings = async (req, res, next) => {
 
 exports.updateSettings = async (req, res, next) => {
   try {
+    cachedSettings = null; // Invalidate cache immediately
+    cachedSettingsTime = 0;
+
     let settings = await Settings.findOne();
     if (!settings) {
       settings = new Settings();
@@ -62,6 +80,9 @@ exports.updateSettings = async (req, res, next) => {
     if (supplierBillFormat) settings.supplierBillFormat = supplierBillFormat;
 
     await settings.save();
+
+    cachedSettings = settings.toObject();
+    cachedSettingsTime = Date.now();
 
     res.json({
       success: true,

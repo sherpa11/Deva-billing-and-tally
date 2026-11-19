@@ -25,7 +25,8 @@ exports.getExpenses = async (req, res, next) => {
 
     const expenses = await Expense.find(filter)
       .sort({ date: -1, createdAt: -1 })
-      .populate('createdBy', 'name');
+      .populate('createdBy', 'name')
+      .lean();
 
     const totalExpense = expenses.reduce((sum, item) => sum + item.amount, 0);
 

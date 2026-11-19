@@ -135,7 +135,8 @@ const supplierBillSchema = new mongoose.Schema({
   timestamps: true
 });
 
-supplierBillSchema.index({ supplierId: 1, isVoid: 1, transactionDate: -1 });
+supplierBillSchema.index({ isVoid: 1, transactionDate: -1, createdAt: -1 });
+supplierBillSchema.index({ supplierId: 1, isVoid: 1, transactionDate: -1, createdAt: -1 });
 supplierBillSchema.index({ transactionDate: 1, isVoid: 1 });
 
 module.exports = mongoose.model('SupplierBill', supplierBillSchema);

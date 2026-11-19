@@ -15,14 +15,78 @@ exports.getDashboardStats = async (req, res, next) => {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Sales & Payments on target date (optimized with lean)
-    const transactions = await Transaction.find({
-      transactionDate: { $gte: startOfDay, $lte: endOfDay },
-      isVoid: false
-    })
-      .select('type billAmount bigBoxes smallBoxes bigEquivalent amountPaid buyerId transactionDate createdAt billNumber newBalance')
-      .populate('buyerId', 'name phone buyerCode')
-      .lean();
+    // Execute all independent database queries in a single concurrent Promise.all batch
+    const [
+      transactions,
+      supplierBills,
+      expenses,
+      buyerAgg,
+      supplierAgg,
+      recentSales,
+      recentPurchases
+    ] = await Promise.all([
+      // 1. Sales & Payments on target date
+      Transaction.find({
+        transactionDate: { $gte: startOfDay, $lte: endOfDay },
+        isVoid: false
+      })
+        .select('type billAmount bigBoxes smallBoxes bigEquivalent amountPaid buyerId transactionDate createdAt billNumber newBalance')
+        .populate('buyerId', 'name phone buyerCode')
+        .lean(),
+
+      // 2. Inward Purchases from Supplier Bills on target date
+      SupplierBill.find({
+        transactionDate: { $gte: startOfDay, $lte: endOfDay },
+        isVoid: false
+      })
+        .populate('supplierId', 'name phone supplierCode')
+        .lean(),
+
+      // 3. Daily Expenses
+      Expense.find({
+        date: { $gte: startOfDay, $lte: endOfDay },
+        isVoid: false
+      }).select('amount').lean(),
+
+      // 4. Buyer Outstanding aggregation
+      Buyer.aggregate([
+        { $match: { isActive: true } },
+        {
+          $group: {
+            _id: null,
+            totalDue: { $sum: { $cond: [{ $gt: ['$currentBalance', 0] }, '$currentBalance', 0] } },
+            totalAdv: { $sum: { $cond: [{ $lt: ['$currentBalance', 0] }, { $abs: '$currentBalance' }, 0] } }
+          }
+        }
+      ]),
+
+      // 5. Supplier Payable aggregation
+      Supplier.aggregate([
+        { $match: { isActive: true } },
+        {
+          $group: {
+            _id: null,
+            totalPayable: { $sum: { $cond: [{ $gt: ['$currentBalance', 0] }, '$currentBalance', 0] } }
+          }
+        }
+      ]),
+
+      // 6. Recent Activity Sales
+      Transaction.find({ isVoid: false })
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .limit(10)
+        .populate('buyerId', 'name phone buyerCode')
+        .populate('createdBy', 'name')
+        .lean(),
+
+      // 7. Recent Activity Purchases
+      SupplierBill.find({ isVoid: false })
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .limit(5)
+        .populate('supplierId', 'name phone supplierCode')
+        .populate('createdBy', 'name')
+        .lean()
+    ]);
 
     let dailySalesValue = 0;
     let dailyBigBoxesSold = 0;
@@ -42,14 +106,6 @@ exports.getDashboardStats = async (req, res, next) => {
       }
     });
 
-    // 2. Inward Purchases from Supplier Bills on target date (optimized with lean)
-    const supplierBills = await SupplierBill.find({
-      transactionDate: { $gte: startOfDay, $lte: endOfDay },
-      isVoid: false
-    })
-      .populate('supplierId', 'name phone supplierCode')
-      .lean();
-
     let dailyPurchaseValue = 0;
     let dailyNetPayable = 0;
     let dailyBigBoxesInward = 0;
@@ -68,54 +124,10 @@ exports.getDashboardStats = async (req, res, next) => {
       }
     });
 
-    // 3. Daily Expenses (optimized with lean)
-    const expenses = await Expense.find({
-      date: { $gte: startOfDay, $lte: endOfDay },
-      isVoid: false
-    }).select('amount').lean();
     const dailyExpenseTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-    // 4. Overall Outstanding balances via lightning-fast MongoDB aggregation
-    const [buyerAgg, supplierAgg] = await Promise.all([
-      Buyer.aggregate([
-        { $match: { isActive: true } },
-        {
-          $group: {
-            _id: null,
-            totalDue: { $sum: { $cond: [{ $gt: ['$currentBalance', 0] }, '$currentBalance', 0] } },
-            totalAdv: { $sum: { $cond: [{ $lt: ['$currentBalance', 0] }, { $abs: '$currentBalance' }, 0] } }
-          }
-        }
-      ]),
-      Supplier.aggregate([
-        { $match: { isActive: true } },
-        {
-          $group: {
-            _id: null,
-            totalPayable: { $sum: { $cond: [{ $gt: ['$currentBalance', 0] }, '$currentBalance', 0] } }
-          }
-        }
-      ])
-    ]);
-
     const totalBuyerOutstanding = buyerAgg[0]?.totalDue || 0;
     const totalBuyerAdvance = buyerAgg[0]?.totalAdv || 0;
     const totalSupplierPayable = supplierAgg[0]?.totalPayable || 0;
-
-    // 5. Recent Activity (Mix of Sales, Payments, and Supplier Bills)
-    const recentSales = await Transaction.find({ isVoid: false })
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .limit(10)
-      .populate('buyerId', 'name phone buyerCode')
-      .populate('createdBy', 'name')
-      .lean();
-
-    const recentPurchases = await SupplierBill.find({ isVoid: false })
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .limit(5)
-      .populate('supplierId', 'name phone supplierCode')
-      .populate('createdBy', 'name')
-      .lean();
 
     res.json({
       success: true,

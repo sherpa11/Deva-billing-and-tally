@@ -16,26 +16,29 @@ exports.getDailyBusinessReport = async (req, res, next) => {
     const end = endDate ? new Date(endDate) : new Date();
     end.setHours(23, 59, 59, 999);
 
-    const sales = await Transaction.find({
-      transactionDate: { $gte: start, $lte: end },
-      isVoid: false
-    })
-      .select('transactionDate type billAmount bigBoxes smallBoxes bigEquivalent amountPaid')
-      .lean();
+    // Execute sales, purchases, and expenses concurrently in a single Promise.all batch
+    const [sales, purchases, expenses] = await Promise.all([
+      Transaction.find({
+        transactionDate: { $gte: start, $lte: end },
+        isVoid: false
+      })
+        .select('transactionDate type billAmount bigBoxes smallBoxes bigEquivalent amountPaid')
+        .lean(),
 
-    const purchases = await SupplierBill.find({
-      transactionDate: { $gte: start, $lte: end },
-      isVoid: false
-    })
-      .select('transactionDate grossTotal items')
-      .lean();
+      SupplierBill.find({
+        transactionDate: { $gte: start, $lte: end },
+        isVoid: false
+      })
+        .select('transactionDate grossTotal items')
+        .lean(),
 
-    const expenses = await Expense.find({
-      date: { $gte: start, $lte: end },
-      isVoid: false
-    })
-      .select('date amount')
-      .lean();
+      Expense.find({
+        date: { $gte: start, $lte: end },
+        isVoid: false
+      })
+        .select('date amount')
+        .lean()
+    ]);
 
     // Group by Date YYYY-MM-DD (using local date formatting to prevent timezone shift)
     const dateMap = {};
@@ -124,19 +127,28 @@ exports.getDailyBusinessReport = async (req, res, next) => {
 
 exports.getAgingReport = async (req, res, next) => {
   try {
-    const buyers = await Buyer.find({ isActive: true, currentBalance: { $gt: 0 } }).sort({ currentBalance: -1 });
+    const buyers = await Buyer.find({ isActive: true, currentBalance: { $gt: 0 } })
+      .select('name phone buyerCode currentBalance createdAt')
+      .sort({ currentBalance: -1 })
+      .lean();
+
+    const buyerIds = buyers.map(b => b._id);
+    
+    // Batch lookup all last active transaction dates in a single aggregation pipeline
+    const lastTxns = await Transaction.aggregate([
+      { $match: { buyerId: { $in: buyerIds }, isVoid: false } },
+      { $sort: { transactionDate: -1, createdAt: -1 } },
+      { $group: { _id: '$buyerId', lastDate: { $first: '$transactionDate' } } }
+    ]);
+
+    const lastDateMap = new Map();
+    lastTxns.forEach(t => {
+      lastDateMap.set(t._id.toString(), t.lastDate);
+    });
 
     const now = new Date();
-    const result = [];
-
-    for (const buyer of buyers) {
-      // Find the last payment or sale
-      const lastTxn = await Transaction.findOne({
-        buyerId: buyer._id,
-        isVoid: false
-      }).sort({ transactionDate: -1 });
-
-      const lastDate = lastTxn ? lastTxn.transactionDate : buyer.createdAt;
+    const result = buyers.map(buyer => {
+      const lastDate = lastDateMap.get(buyer._id.toString()) || buyer.createdAt;
       const diffDays = Math.floor((now - new Date(lastDate)) / (1000 * 60 * 60 * 24));
 
       let bucket = '0-7 DAYS';
@@ -144,7 +156,7 @@ exports.getAgingReport = async (req, res, next) => {
       else if (diffDays > 15) bucket = '16-30 DAYS';
       else if (diffDays > 7) bucket = '8-15 DAYS';
 
-      result.push({
+      return {
         id: buyer._id,
         name: buyer.name,
         phone: buyer.phone,
@@ -153,8 +165,8 @@ exports.getAgingReport = async (req, res, next) => {
         lastTransactionDate: lastDate,
         daysIdle: diffDays,
         bucket
-      });
-    }
+      };
+    });
 
     const summary = {
       under7Days: result.filter(r => r.bucket === '0-7 DAYS').reduce((s, r) => s + r.balance, 0),

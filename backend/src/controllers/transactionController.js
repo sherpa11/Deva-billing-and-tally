@@ -79,9 +79,11 @@ exports.createSale = async (req, res, next) => {
     const totalDue = Math.round((billAmount + oldBal) * 100) / 100;
     const newBal = Math.round((totalDue - numPaid) * 100) / 100;
 
-    // Sequential Bill Number & Transaction Sequence
-    const billNumber = await getNextSequenceValue('buyerBillNumber');
-    const txnSeq = await getNextSequenceValue('transactionSeq');
+    // Sequential Bill Number & Transaction Sequence in parallel
+    const [billNumber, txnSeq] = await Promise.all([
+      getNextSequenceValue('buyerBillNumber'),
+      getNextSequenceValue('transactionSeq')
+    ]);
     const transactionNumber = `TXN-${String(txnSeq).padStart(6, '0')}`;
 
     const transaction = new Transaction({
@@ -258,14 +260,16 @@ exports.getTransactions = async (req, res, next) => {
       filter.transactionDate = { $gte: start, $lte: end };
     }
 
-    const transactions = await Transaction.find(filter)
-      .sort({ transactionDate: -1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .populate('buyerId', 'name phone buyerCode')
-      .populate('createdBy', 'name');
-
-    const total = await Transaction.countDocuments(filter);
+    const [transactions, total] = await Promise.all([
+      Transaction.find(filter)
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(Number(limit))
+        .populate('buyerId', 'name phone buyerCode')
+        .populate('createdBy', 'name')
+        .lean(),
+      Transaction.countDocuments(filter)
+    ]);
 
     res.json({
       success: true,

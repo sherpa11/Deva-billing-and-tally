@@ -41,8 +41,10 @@ const Dashboard = ({ selectedDate }) => {
     fetchDashboardData();
   }, [selectedDate]);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (forceSpinner = false) => {
+    if (forceSpinner || !stats) {
+      setLoading(true);
+    }
     try {
       const res = await api.get(`/dashboard/stats?date=${selectedDate}`);
       if (res.data.success) {

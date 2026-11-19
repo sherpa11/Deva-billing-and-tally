@@ -45,6 +45,8 @@ const buyerSchema = new mongoose.Schema({
   timestamps: true
 });
 
+buyerSchema.index({ isActive: 1, name: 1 });
+buyerSchema.index({ isActive: 1, currentBalance: -1 });
 buyerSchema.index({ name: 1, phone: 1, isActive: 1 });
 buyerSchema.index({ phone: 1 });
 
