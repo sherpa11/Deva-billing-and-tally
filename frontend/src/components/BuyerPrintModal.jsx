@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, ChevronDown, ImageDown, Monitor, Loader2 } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
+import BuyerBillPad from './bills/BuyerBillPad';
 
 const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
   const { settings, fetchSettings } = useSettings();
@@ -33,29 +35,30 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
 
   if (!isOpen || !bill) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
   };
 
-  const buyerName = bill.buyerId?.name || bill.buyerName || 'வாடிக்கையாளர்';
-  const buyerPhone = bill.buyerId?.phone || '';
-  const dateFormatted = formatDate(bill.transactionDate || bill.createdAt);
+  const dateFormatted = formatDate(bill.transactionDate || bill.date || bill.createdAt);
 
-  const phone1 = Array.isArray(settings?.phones) && settings.phones[0] ? settings.phones[0] : '';
-  const phone2 = Array.isArray(settings?.phones) && settings.phones[1] ? settings.phones[1] : '';
+  /**
+   * Direct Window Print:
+   * Uses the live DOM rendered in the React Portal so 100% of dynamic data,
+   * fonts, and template images are guaranteed to be present with zero state loss.
+   */
+  const handlePrint = () => {
+    setShowOptions(false);
+    window.print();
+  };
 
   const handleDownloadImage = async () => {
     setShowOptions(false);
     if (!printAreaRef.current) return;
 
     setIsDownloadingImage(true);
-    const safeBuyerName = (bill.buyerId?.name || bill.buyerName || 'வாடிக்கையாளர்')
+    const safeBuyerName = (bill.buyerId?.name || bill.buyerName || 'Buyer')
       .trim()
       .replace(/[\/\s]+/g, '_')
       .replace(/[^a-zA-Z0-9_\-\u0B80-\u0BFF]/g, '');
@@ -65,8 +68,8 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
 
     await downloadBillImage(printAreaRef.current, {
       filename,
-      targetWidthPx: 559.37, // Exact A5 portrait width (148mm @ 96 DPI)
-      targetHeightPx: 793.70, // Exact A5 portrait height (210mm @ 96 DPI)
+      targetWidthPx: 723, // Exact master template width
+      targetHeightPx: 1024, // Exact master template height
       shareTitle: `Buyer Bill - ${safeBuyerName}`,
       onStatusChange: (msg) => {
         setStatusMessage(msg);
@@ -77,39 +80,13 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
     setIsDownloadingImage(false);
   };
 
-  // Items processing
-  const items = Array.isArray(bill.items) && bill.items.length > 0
-    ? bill.items
-    : [
-        {
-          ratePerBigBox: bill.ratePerBigBox || 0,
-          description: bill.bigBoxes > 0 && bill.smallBoxes > 0
-            ? `தக்காளி (${bill.bigBoxes} பெ / ${bill.smallBoxes} சி)`
-            : bill.smallBoxes > 0
-            ? 'தக்காளி சிறிய பெட்டி'
-            : 'தக்காளி பெரிய பெட்டி',
-          bigEquivalent: bill.bigEquivalent || bill.bigBoxes || 0,
-          amount: bill.billAmount || 0
-        }
-      ];
-
-  const totalDisplayRows = 9;
-  const emptyRowsCount = Math.max(0, totalDisplayRows - items.length);
-
-  // Financial calculations
-  const todayTotal = Number(bill.billAmount) || items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
-  const oldBalance = Number(bill.oldBalance) || 0;
-  const grandTotal = Math.round((todayTotal + oldBalance) * 100) / 100;
-  const amountPaid = Number(bill.amountPaid) || 0;
-  const balanceDue = Math.round((grandTotal - amountPaid) * 100) / 100;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
+  const modalContent = (
+    <div className="buyer-modal-portal fixed inset-0 z-50 overflow-y-auto">
+      <div className="buyer-modal-wrap flex min-h-screen items-center justify-center p-2 sm:p-4">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs no-print" onClick={onClose} />
 
-        <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-4">
+        <div className="buyer-modal-card relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-4">
           {/* Header Controls (Screen only) */}
           <div className="no-print flex items-center justify-between px-5 py-3.5 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center gap-2">
@@ -131,7 +108,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                   type="button"
                   onClick={handlePrint}
                   className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-forest-600 hover:bg-forest-700 text-white rounded-l-xl text-xs font-bold shadow-md shadow-forest-600/25 transition-all cursor-pointer active:scale-95"
-                  title="Browser Print Preview (A5)"
+                  title="Browser Print Preview (A5 - Exactly 1 Sheet)"
                 >
                   <Printer className="w-4 h-4" />
                   <span>அச்சிடு (Print A5)</span>
@@ -155,16 +132,13 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
                     {/* 1. Browser Print Preview */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowOptions(false);
-                        handlePrint();
-                      }}
+                      onClick={handlePrint}
                       className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
                       <Monitor className="w-4 h-4 text-slate-600" />
                       <div>
                         <div className="font-bold">Browser Print Preview</div>
-                        <div className="text-[10px] text-slate-500 font-normal">Direct A5 print dialog preview</div>
+                        <div className="text-[10px] text-slate-500 font-normal">A5 portrait (strictly 1 single sheet)</div>
                       </div>
                     </button>
 
@@ -203,232 +177,119 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
           </div>
 
           {/* Printable Bill Area Container */}
-          <div className="p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/50">
-            {/* EXACT REPRODUCTION OF THE NEW OFFICIAL BUYER BILL IN STANDARD A5 */}
-            <div
-              ref={printAreaRef}
-              id="buyer-printable-bill"
-              className="bg-white text-slate-900 shadow-md font-tamil w-[148mm] min-h-[200mm] max-w-[148mm] mx-auto box-border flex flex-col justify-between p-4 border-2 border-[#125538] rounded-2xl select-none"
-              style={{
-                fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
-                borderColor: '#125538'
-              }}
-            >
-              {/* Top Header Card */}
-              <div>
-                <div className="flex items-start justify-between border-2 border-[#125538] rounded-xl p-2.5 mb-1.5">
-                  {/* Left: DEVA Logo */}
-                  <div className="w-20 h-16 rounded-lg border border-[#125538]/40 p-1 flex items-center justify-center shrink-0 bg-white">
-                    <img
-                      src="/deva-logo.png"
-                      alt="DEVA"
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-
-                  {/* Center & Right Details */}
-                  <div className="flex-1 text-center px-2">
-                    <div className="flex items-center justify-center gap-2">
-                      <h1 className="text-xl sm:text-2xl font-black text-[#125538] tracking-tight leading-none">
-                        {settings.storeName || 'தேவா & கோ'}
-                      </h1>
-                      {(phone1 || phone2) && (
-                        <>
-                          <div className="h-4 w-px bg-[#125538]" />
-                          <div className="text-right text-[10px] font-black text-[#125538] leading-tight font-mono">
-                            {phone1 && <div>📞 {phone1}</div>}
-                            {phone2 && <div>{phone2}</div>}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <p className="text-xs font-bold text-[#125538] mt-1 leading-tight">
-                      {settings.tagline || 'தக்காளி & காய்கனி கமிஷன் மண்டி'}
-                    </p>
-                    <p className="text-[10px] font-semibold text-slate-700 mt-0.5 leading-tight">
-                      {settings.address || '54 A, அண்ணல் காந்தி மார்க்கெட், திண்டுக்கல் - 624 001'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Proprietor Curved Banner */}
-                <div className="flex justify-center my-1.5">
-                  <div className="bg-[#e4f3ea] border border-[#125538]/30 px-6 py-0.5 rounded-full text-center shadow-2xs">
-                    <span className="text-xs font-black text-slate-800">
-                      Prop: <span className="text-red-600 font-black">{settings.proprietor || 'R.தேவதாஸ்'}</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Metadata Row: Bill No & Date */}
-                <div className="flex justify-between items-center text-xs font-bold text-slate-900 px-1 py-1">
-                  <div className="flex items-baseline">
-                    <span className="font-bold text-slate-800">எண் : </span>
-                    <span className="font-mono font-black text-sm ml-1.5 px-2 py-0.2 border-b border-slate-700 min-w-[70px]">
-                      {bill.billNumber || bill.transactionNumber || '—'}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline">
-                    <span className="font-bold text-slate-800">தேதி : </span>
-                    <span className="font-mono font-bold text-xs ml-1.5 px-2 py-0.2 border-b border-slate-700 min-w-[85px]">
-                      {dateFormatted}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Customer Name Line */}
-                <div className="flex items-baseline text-xs font-bold text-slate-900 px-1 pb-1.5">
-                  <span className="font-bold text-slate-800 shrink-0">திரு : </span>
-                  <span className="font-bold text-slate-900 ml-1.5 px-2 border-b border-slate-700 flex-1 truncate">
-                    {buyerName} {buyerPhone ? `(${buyerPhone})` : ''}
-                  </span>
-                </div>
-
-                {/* Main 4-Column Table */}
-                <table className="w-full text-center border-collapse border-2 border-[#125538] text-[11px] mt-0.5">
-                  <thead>
-                    <tr className="border-b-2 border-[#125538] text-[#125538] font-black text-xs bg-slate-50/60">
-                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">விலை</th>
-                      <th className="border-r-2 border-[#125538] py-1 px-2 text-center w-[46%]">விவரம்</th>
-                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">எண்ணம்</th>
-                      <th className="py-1 px-1 w-[22%]">மொத்தம் ரூ. பை.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={idx} className="border-b border-[#125538]/70 font-semibold text-slate-900 h-6">
-                        <td className="border-r-2 border-[#125538] py-0.5 px-1 text-center font-mono">
-                          {item.ratePerBigBox > 0 ? `₹${item.ratePerBigBox}` : '—'}
-                        </td>
-                        <td className="border-r-2 border-[#125538] py-0.5 px-2 text-left truncate">
-                          {item.description || 'தக்காளி பெட்டி'}
-                        </td>
-                        <td className="border-r-2 border-[#125538] py-0.5 px-1 text-center font-mono font-bold">
-                          {item.bigEquivalent || item.bigBoxes || '—'}
-                        </td>
-                        <td className="py-0.5 px-1 text-right pr-2 font-mono font-bold">
-                          {Number(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))}
-
-                    {/* Ruled blank rows matching bill pad */}
-                    {Array.from({ length: emptyRowsCount }).map((_, idx) => (
-                      <tr key={`empty-${idx}`} className="border-b border-[#125538]/60 h-5">
-                        <td className="border-r-2 border-[#125538] py-0.5"></td>
-                        <td className="border-r-2 border-[#125538] py-0.5"></td>
-                        <td className="border-r-2 border-[#125538] py-0.5"></td>
-                        <td className="py-0.5"></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Financial Summary Section */}
-                <div className="border-2 border-[#125538] border-t-0 text-[11px] font-bold">
-                  {/* Row 1: இன்றைய மொத்தம் */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[62%] px-3 text-right border-r-2 border-[#125538] font-bold text-slate-800">
-                      இன்றைய மொத்தம் :
-                    </div>
-                    <div className="w-[38%] px-3 text-right font-mono font-bold text-slate-900">
-                      ₹{todayTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Row 2: முன் பாக்கி */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[62%] px-3 text-right border-r-2 border-[#125538] font-bold text-slate-800">
-                      முன் பாக்கி :
-                    </div>
-                    <div className="w-[38%] px-3 text-right font-mono font-bold text-slate-900">
-                      ₹{oldBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Row 3: மொத்தம் (Shaded in light green) */}
-                  <div className="flex border-b border-[#125538] h-6 items-center bg-[#e4f3ea]">
-                    <div className="w-[62%] px-3 text-right border-r-2 border-[#125538] font-black text-[#125538] text-xs">
-                      மொத்தம் :
-                    </div>
-                    <div className="w-[38%] px-3 text-right font-mono font-black text-[#125538] text-xs">
-                      ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Row 4: வரவு */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[62%] px-3 text-right border-r-2 border-[#125538] font-bold text-slate-800">
-                      வரவு :
-                    </div>
-                    <div className="w-[38%] px-3 text-right font-mono font-bold text-slate-900">
-                      ₹{amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  {/* Row 5: மொத்த பாக்கி (Shaded in light green) */}
-                  <div className="flex h-6.5 items-center bg-[#e4f3ea]">
-                    <div className="w-[62%] px-3 text-right border-r-2 border-[#125538] font-black text-[#125538] text-xs">
-                      மொத்த பாக்கி :
-                    </div>
-                    <div className="w-[38%] px-3 text-right font-mono font-black text-red-600 text-xs">
-                      ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Footer Section */}
-              <div className="pt-2 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="h-0.5 w-12 bg-[#125538]/50" />
-                  <span className="text-xs font-black text-[#125538] tracking-wider">
-                    {settings.footerNote || 'தாங்கள் வருகை நல்வரவு !'}
-                  </span>
-                  <div className="h-0.5 w-12 bg-[#125538]/50" />
-                </div>
-              </div>
-            </div>
+          <div className="buyer-modal-body p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
+            {/* EXACT MASTER REFERENCE BUYER BILL PAD */}
+            <BuyerBillPad ref={printAreaRef} bill={bill} settings={settings} />
           </div>
         </div>
       </div>
 
-      {/* Direct Print CSS for New Buyer Bill (Standard A5 Portrait) */}
+      {/* Direct Single-Sheet A5 Print CSS (148mm x 210mm) */}
       <style>{`
         @media print {
           @page {
-            size: A5 portrait;
-            margin: 5mm;
+            size: A5 portrait !important;
+            margin: 0 !important;
           }
-          body * {
-            visibility: hidden;
+          *, *:before, *:after {
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          #buyer-printable-bill, #buyer-printable-bill * {
-            visibility: visible;
+          html, body {
+            width: 148mm !important;
+            height: 210mm !important;
+            max-width: 148mm !important;
+            max-height: 210mm !important;
+            min-height: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+          }
+          /* Completely hide entire main application tree */
+          #root {
+            display: none !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .buyer-modal-portal {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          .buyer-modal-wrap {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            overflow: hidden !important;
+          }
+          .buyer-modal-card {
+            position: static !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
+          }
+          .buyer-modal-body {
+            position: static !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
           #buyer-printable-bill {
-            position: fixed;
-            left: 0;
-            top: 0;
+            position: static !important;
+            margin: auto !important;
             width: 138mm !important;
+            height: 195.4mm !important;
             max-width: 138mm !important;
-            height: 200mm !important;
-            max-height: 200mm !important;
-            margin: 0 !important;
-            padding: 4mm !important;
-            border: 2px solid #125538 !important;
-            border-radius: 12px !important;
+            max-height: 195.4mm !important;
+            padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
             box-shadow: none !important;
             box-sizing: border-box !important;
-            page-break-after: avoid;
-            page-break-inside: avoid;
+            page-break-before: avoid !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            break-before: avoid !important;
+            break-after: avoid !important;
+            break-inside: avoid !important;
             overflow: hidden !important;
           }
         }
       `}</style>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default BuyerPrintModal;
