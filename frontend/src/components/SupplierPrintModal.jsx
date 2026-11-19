@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, ChevronDown, ImageDown, Monitor, Loader2 } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
@@ -55,9 +56,8 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
       .trim()
       .replace(/[\/\s]+/g, '_')
       .replace(/[^a-zA-Z0-9_\-\u0B80-\u0BFF]/g, '');
-    const billNo = bill.billNumber || bill.lotNumber || bill.transactionNumber || '';
     const cleanDate = dateFormatted.replace(/[\/\s]/g, '-');
-    const filename = `Deva_Supplier_Bill_${safeSupplierName}${billNo ? `_${billNo}` : ''}_${cleanDate}.png`;
+    const filename = `Deva_Supplier_Bill_${safeSupplierName}_${cleanDate}.png`;
 
     await downloadBillImage(printAreaRef.current, {
       filename,
@@ -73,13 +73,13 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
     setIsDownloadingImage(false);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
+  const modalContent = (
+    <div className="supplier-modal-portal fixed inset-0 z-50 overflow-y-auto">
+      <div className="supplier-modal-wrap flex min-h-screen items-center justify-center p-2 sm:p-4">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs no-print" onClick={onClose} />
 
-        <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-4">
+        <div className="supplier-modal-card relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden my-4">
           {/* Header Controls (Screen only) */}
           <div className="no-print flex items-center justify-between px-5 py-3.5 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                       <Monitor className="w-4 h-4 text-slate-600" />
                       <div>
                         <div className="font-bold">Browser Print Preview</div>
-                        <div className="text-[10px] text-slate-500 font-normal">Direct A5 print dialog preview</div>
+                        <div className="text-[10px] text-slate-500 font-normal">Direct A5 single-page print preview</div>
                       </div>
                     </button>
 
@@ -173,47 +173,102 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
           </div>
 
           {/* Printable Bill Area Container */}
-          <div className="p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
+          <div className="supplier-modal-body p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
             {/* EXACT MASTER REFERENCE SUPPLIER BILL PAD */}
             <SupplierBillPad ref={printAreaRef} bill={bill} settings={settings} />
           </div>
         </div>
       </div>
 
-      {/* Direct Print CSS for Reference A5 Supplier Bill Format (148mm x 210mm) */}
+      {/* Direct Print CSS - Strictly 1 Single Sheet A5 Portrait (148mm x 210mm) */}
       <style>{`
         @media print {
           @page {
-            size: A5 portrait;
-            margin: 3mm;
+            size: A5 portrait !important;
+            margin: 0 !important;
           }
-          body {
+          html, body {
+            width: 148mm !important;
+            height: 210mm !important;
+            max-width: 148mm !important;
+            max-height: 210mm !important;
+            min-height: 210mm !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: transparent !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
           }
-          body * {
-            visibility: hidden;
+          /* Completely hide main application DOM tree to prevent multi-page height calculation */
+          #root {
+            display: none !important;
           }
-          #supplier-printable-bill, #supplier-printable-bill * {
-            visibility: visible;
+          .no-print {
+            display: none !important;
           }
-          #supplier-printable-bill {
-            position: fixed !important;
+          .supplier-modal-portal {
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          .supplier-modal-wrap {
+            display: block !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            overflow: hidden !important;
+          }
+          .supplier-modal-card {
+            position: static !important;
+            width: 148mm !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
+          }
+          .supplier-modal-body {
+            position: static !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
+            height: 210mm !important;
+            max-height: 210mm !important;
+            display: block !important;
+          }
+          #supplier-printable-bill {
+            position: absolute !important;
+            left: 3mm !important;
+            top: 4.4mm !important;
             width: 142mm !important;
             height: 201.2mm !important;
             max-width: 142mm !important;
             max-height: 201.2mm !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             box-sizing: border-box !important;
+            page-break-before: avoid !important;
             page-break-after: avoid !important;
             page-break-inside: avoid !important;
+            break-before: avoid !important;
+            break-after: avoid !important;
+            break-inside: avoid !important;
             overflow: hidden !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -222,6 +277,8 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
       `}</style>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default SupplierPrintModal;
