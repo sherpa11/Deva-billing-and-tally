@@ -4,6 +4,8 @@ import React from 'react';
  * SupplierBillPad - Master Reference Supplier Bill Template
  * Uses the exact master reference image as the bill canvas and dynamically
  * overlays larger, bold, readable purchase data into the exact blank fields.
+ * Sized to 138mm x 195.4mm to fit safely inside physical A5 paper (148mm x 210mm)
+ * with standard printer hardware margins (Canon G3030, Epson, HP, etc.) on exactly 1 sheet.
  */
 const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
   if (!bill) return null;
@@ -91,9 +93,9 @@ const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
       id="supplier-printable-bill"
       className="relative select-none text-slate-900 overflow-hidden mx-auto shadow-2xl bg-white"
       style={{
-        width: '142mm',
-        height: '201.2mm', // Exactly 142 * (1024 / 723) = 201.12mm (fits perfectly inside A5 148x210)
-        maxHeight: '201.2mm',
+        width: '138mm',
+        height: '195.4mm', // Exact 723:1024 ratio (138 * 1024 / 723 = 195.4mm), fits 100% inside physical A5 148x210
+        maxHeight: '195.4mm',
         boxSizing: 'border-box',
         aspectRatio: '723 / 1024',
         fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif'
