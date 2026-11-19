@@ -475,79 +475,79 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-content-secondary mb-1">
-                Other Debit
+                Advance Debit (முன் பாக்கி)
               </label>
               <input
                 type="number"
-                value={deductions.debit}
-                onChange={(e) => setDeductions({ ...deductions, debit: e.target.value })}
-                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white"
+                step="any"
+                value={previousBalance}
+                onChange={(e) => setPreviousBalance(e.target.value)}
+                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white font-mono"
+                placeholder="0.00"
               />
             </div>
           </div>
+
+          {/* Net Payable to Farmer line */}
+          <div className="mt-3 pt-2.5 border-t border-surface-border flex justify-between items-center">
+            <span className="text-xs font-bold text-content-main font-tamil">
+              Net Payable to Farmer:
+            </span>
+            <span className="text-base font-bold text-forest-700 font-mono">
+              ₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
         </div>
 
-        {/* Ledger & Payment Section (Exact Accounting Rules) */}
-        <div className="bg-[#f0f8f4] p-3.5 sm:p-4 rounded-xl border border-forest-200 space-y-3">
-          <div className="text-xs font-bold text-forest-900 flex justify-between items-center">
-            <span className="font-tamil">கணக்கு விபரம் & கொடுப்பனவு (Ledger & Payment)</span>
-            <span className="text-[11px] font-normal text-forest-700">A5 Bill Pad Matching</span>
+        {/* Payment Fields (Field 1: செலுத்திய தொகை & Field 2: மீதி பாக்கி) - Immediately below Net Payable */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-surface-bg rounded-xl border border-surface-border">
+          {/* Field 1: செலுத்திய தொகை */}
+          <div className="bg-white p-3 rounded-lg border-2 border-forest-600 shadow-2xs">
+            <label className="block text-xs font-bold text-forest-800 font-tamil mb-1 flex justify-between items-center">
+              <span>செலுத்திய தொகை (Amount Paid)</span>
+              <span className="text-[10px] text-content-secondary font-normal font-sans">Manual Entry</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-sm font-bold text-forest-700">₹</span>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                placeholder="0"
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 text-sm font-black font-mono border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white"
+              />
+            </div>
+            <p className="text-[10px] text-content-secondary mt-1">Default: 0 · User manually enters amount paid</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-forest-100 shadow-2xs">
-            <div>
-              <div className="text-[11px] text-content-secondary font-medium font-tamil">இன்றைய கொள்முதல் நிகரம்:</div>
-              <div className="text-sm font-bold text-slate-800 font-mono">₹{purchaseNetAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+          {/* Field 2: மீதி பாக்கி */}
+          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div className="text-xs font-bold text-slate-700 font-tamil flex justify-between items-center">
+              <span>மீதி பாக்கி (Remaining Balance)</span>
+              <span className="text-[10px] text-content-secondary font-normal font-sans">Auto-Calculated</span>
             </div>
-            <div>
-              <div className="text-[11px] text-content-secondary font-medium font-tamil">பற்று / முன் பாக்கி (Previous):</div>
-              <div className="text-sm font-bold text-amber-700 font-mono">₹{Number(previousBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className={`text-lg font-black font-mono ${
+                remainingBalance > 0 ? 'text-red-600' : remainingBalance < 0 ? 'text-blue-700' : 'text-forest-700'
+              }`}>
+                {remainingBalance < 0
+                  ? `-₹${Math.abs(remainingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                  : `₹${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                }
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                remainingBalance > 0
+                  ? 'bg-red-50 text-red-700 border border-red-200'
+                  : remainingBalance < 0
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-green-50 text-green-700 border border-green-200'
+              }`}>
+                {remainingBalance > 0 ? 'Due to Farmer' : remainingBalance < 0 ? 'Advance / முன்பணம்' : 'Settled'}
+              </span>
             </div>
-            <div className="col-span-2 bg-[#e4f3ea] p-2.5 rounded-md border border-[#125538]/20 flex justify-between items-center">
-              <span className="text-xs font-black text-[#125538] font-tamil">மொத்தம் (Total Payable):</span>
-              <span className="text-base font-black text-[#125538] font-mono">₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-
-          {/* Payment Fields (Field 1: செலுத்திய தொகை & Field 2: மீதி பாக்கி) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="bg-white p-3 rounded-lg border-2 border-forest-600 shadow-xs">
-              <label className="block text-xs font-bold text-forest-800 font-tamil mb-1">
-                கொடுத்தது / செலுத்திய தொகை (Amount Paid):
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-sm font-bold text-forest-700">₹</span>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0.00"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
-                  className="w-full pl-7 pr-3 py-1.5 text-sm font-black font-mono border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-forest-500 bg-white"
-                />
-              </div>
-              <p className="text-[10px] text-content-secondary mt-1">Manual entry: Enter amount handed over to farmer (Default: ₹0)</p>
-            </div>
-
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
-              <div className="text-xs font-bold text-slate-700 font-tamil">
-                மீதி பாக்கி (Remaining Balance):
-              </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className={`text-lg font-black font-mono ${
-                  remainingBalance > 0 ? 'text-red-600' : remainingBalance < 0 ? 'text-blue-700' : 'text-forest-700'
-                }`}>
-                  ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  remainingBalance > 0 ? 'bg-red-50 text-red-700 border border-red-200' : remainingBalance < 0 ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'
-                }`}>
-                  {remainingBalance > 0 ? 'Due to Farmer' : remainingBalance < 0 ? 'Advance / முன்பணம்' : 'Settled'}
-                </span>
-              </div>
-              <p className="text-[10px] text-content-secondary mt-1">Formula: மொத்தம் - செலுத்திய தொகை</p>
-            </div>
+            <p className="text-[10px] text-content-secondary mt-1">Formula: மொத்தம் - செலுத்திய தொகை</p>
           </div>
         </div>
 

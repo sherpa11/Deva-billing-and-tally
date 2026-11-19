@@ -66,8 +66,8 @@ exports.createSupplierBill = async (req, res, next) => {
     const rent = Number(deductions.rent) || 0;
     const debit = Number(deductions.debit) || 0;
 
-    const totalDeductions = Math.round((commission + gate + coolie + rent + debit) * 100) / 100;
-    const purchaseNetAmount = Math.round((grossTotal - totalDeductions) * 100) / 100;
+    const mandiDeductions = Math.round((commission + gate + coolie + rent) * 100) / 100;
+    const purchaseNetAmount = Math.round((grossTotal - mandiDeductions) * 100) / 100;
 
     // Automatically carry forward supplier outstanding balance unless explicitly overridden
     const prevBal = previousBalance !== undefined && previousBalance !== null && previousBalance !== ''
@@ -98,9 +98,9 @@ exports.createSupplierBill = async (req, res, next) => {
         gate,
         coolie,
         rent,
-        debit
+        debit: prevBal
       },
-      totalDeductions,
+      totalDeductions: mandiDeductions,
       purchaseNetAmount,
       previousBalance: prevBal,
       oldBalance: prevBal,
@@ -181,6 +181,113 @@ exports.getSupplierBillById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'பில் கிடைக்கவில்லை' });
     }
     res.json({ success: true, bill });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateSupplierBill = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      transactionDate,
+      items = [],
+      deductions = {},
+      notes = '',
+      previousBalance,
+      amountPaid = 0
+    } = req.body;
+
+    const bill = await SupplierBill.findById(id);
+    if (!bill) {
+      return res.status(404).json({ success: false, message: 'பில் கிடைக்கவில்லை' });
+    }
+    if (bill.isVoid) {
+      return res.status(400).json({ success: false, message: 'ரத்து செய்யப்பட்ட பில்லை திருத்த முடியாது' });
+    }
+
+    const supplier = await Supplier.findById(bill.supplierId);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'விவசாயி கிடைக்கவில்லை' });
+    }
+
+    const oldGross = bill.grossTotal || 0;
+    const oldPaid = Number(bill.amountPaid) || 0;
+    const oldRemaining = bill.remainingBalance !== undefined ? bill.remainingBalance : (bill.newBalance || 0);
+
+    let newGross = 0;
+    const processedItems = items.map(item => {
+      const rate = Number(item.rate) || 0;
+      const quantity = Number(item.quantity) || 0;
+      const bigBoxes = Number(item.bigBoxes) || 0;
+      const smallBoxes = Number(item.smallBoxes) || 0;
+      const bigEquivalent = Math.round((bigBoxes + (smallBoxes / 2) + Number.EPSILON) * 10) / 10;
+      let amount = Number(item.amount);
+      if (isNaN(amount) || amount <= 0) {
+        amount = bigEquivalent > 0 ? Math.round(bigEquivalent * rate) : Math.round(quantity * rate);
+      }
+      newGross += amount;
+      return {
+        rate,
+        description: item.description || 'தக்காளி',
+        quantity: quantity || bigBoxes || bigEquivalent,
+        amount,
+        bigBoxes,
+        smallBoxes,
+        bigEquivalent
+      };
+    });
+
+    const commission = deductions.commission !== undefined && deductions.commission !== null && deductions.commission !== ''
+      ? Number(deductions.commission)
+      : Math.round(newGross * 0.10);
+    const gate = Number(deductions.gate) || 0;
+    const coolie = Number(deductions.coolie) || 0;
+    const rent = Number(deductions.rent) || 0;
+    const debit = Number(deductions.debit) || 0;
+
+    const mandiDeductions = Math.round((commission + gate + coolie + rent) * 100) / 100;
+    const purchaseNetAmount = Math.round((newGross - mandiDeductions) * 100) / 100;
+
+    const prevBal = previousBalance !== undefined && previousBalance !== null
+      ? Number(previousBalance)
+      : (bill.previousBalance !== undefined ? bill.previousBalance : (bill.oldBalance || 0));
+
+    const totalPayable = Math.round((purchaseNetAmount + prevBal) * 100) / 100;
+    const paid = Number(amountPaid) || 0;
+    const remainingBal = Math.round((totalPayable - paid) * 100) / 100;
+
+    bill.items = processedItems;
+    bill.grossTotal = newGross;
+    bill.deductions = { commission, gate, coolie, rent, debit: prevBal };
+    bill.totalDeductions = mandiDeductions;
+    bill.purchaseNetAmount = purchaseNetAmount;
+    bill.previousBalance = prevBal;
+    bill.oldBalance = prevBal;
+    bill.totalPayable = totalPayable;
+    bill.netPayable = totalPayable;
+    bill.amountPaid = paid;
+    bill.remainingBalance = remainingBal;
+    bill.newBalance = remainingBal;
+    if (notes !== undefined) bill.notes = notes.trim();
+    if (transactionDate) bill.transactionDate = new Date(transactionDate);
+
+    await bill.save();
+
+    // Adjust supplier ledger by delta without duplicate or corrupted balances
+    const balanceDelta = remainingBal - oldRemaining;
+    supplier.currentBalance = Math.round((supplier.currentBalance + balanceDelta) * 100) / 100;
+    supplier.totalPurchases = Math.max(0, Math.round(((supplier.totalPurchases || 0) - oldGross + newGross) * 100) / 100);
+    supplier.totalPayments = Math.max(0, Math.round(((supplier.totalPayments || 0) - oldPaid + paid) * 100) / 100);
+    await supplier.save();
+
+    await bill.populate('supplierId', 'name phone address supplierCode');
+
+    res.json({
+      success: true,
+      message: 'விவசாயி பில் வெற்றிகரமாக புதுப்பிக்கப்பட்டது (Supplier bill updated)',
+      bill
+    });
   } catch (error) {
     next(error);
   }
