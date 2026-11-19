@@ -3,9 +3,8 @@ import React from 'react';
 /**
  * SupplierBillPad - Master Reference Supplier Bill Template
  * Uses the exact master reference image as the bill canvas and dynamically
- * overlays larger, bold, readable purchase data into the exact blank fields.
- * Sized to 138mm x 195.4mm to fit safely inside physical A5 paper (148mm x 210mm)
- * with standard printer hardware margins (Canon G3030, Epson, HP, etc.) on exactly 1 sheet.
+ * overlays readable purchase data into the exact blank fields using 100% self-contained
+ * inline styles. Sized to 138mm x 195.4mm for physical A5 single-sheet printing.
  */
 const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
   if (!bill) return null;
@@ -84,127 +83,265 @@ const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
   const splitGross = splitAmount(grossTotal);
   const splitTotal = splitAmount(totalPayable);
 
-  // Each item row height in percentage of total bill height (generous vertical spacing, fits up to 7 items)
-  const itemRowHeightPct = 4.80;
+  // Row height: 38px height + 8px gap = 46px per item row
+  const rowHeightPx = 38;
+  const rowGapPx = 8;
 
   return (
     <div
       ref={ref}
       id="supplier-printable-bill"
-      className="relative select-none text-slate-900 overflow-hidden mx-auto shadow-2xl bg-white"
+      className="supplier-bill-canvas"
       style={{
+        position: 'relative',
         width: '138mm',
-        height: '195.4mm', // Exact 723:1024 ratio (138 * 1024 / 723 = 195.4mm), fits 100% inside physical A5 148x210
+        height: '195.4mm', // Exact 723:1024 ratio, fits inside physical A5 148x210 with hardware margins
+        maxWidth: '138mm',
         maxHeight: '195.4mm',
+        margin: '0 auto',
+        padding: 0,
         boxSizing: 'border-box',
-        aspectRatio: '723 / 1024',
-        fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif'
+        overflow: 'hidden',
+        backgroundColor: '#ffffff',
+        fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
+        userSelect: 'none',
+        WebkitPrintColorAdjust: 'exact',
+        printColorAdjust: 'exact'
       }}
     >
       {/* 1. Master Reference Supplier Bill Template Background */}
-      {/* Note: Template has 'எண் : 54' permanently printed in original red ink on the top right */}
+      {/* Note: Template permanently displays 'எண் : 54' in original red ink on the top right */}
       <img
         src="/supplier-bill-template.jpg"
         alt="DEVA & CO Supplier Bill Pad"
-        className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none block"
-        style={{ width: '100%', height: '100%' }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'fill',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          display: 'block',
+          zIndex: 1
+        }}
       />
 
-      {/* 2. SUPPLIER NAME OVERLAY (திரு : _____________) - Larger & Bold */}
+      {/* 2. SUPPLIER NAME OVERLAY (திரு : _____________) */}
       <div
-        className="absolute flex items-center z-10 pl-1.5"
         style={{
-          top: '17.6%',
+          position: 'absolute',
+          zIndex: 10,
+          top: '17.8%',
           left: '12.5%',
-          width: '51.5%',
-          height: '4.0%'
+          width: '51.0%',
+          height: '3.8%',
+          display: 'flex',
+          alignItems: 'center',
+          paddingLeft: '6px',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
         }}
       >
-        <span className="font-black text-slate-950 text-[14.5px] sm:text-[16px] font-tamil truncate tracking-tight">
+        <span
+          style={{
+            fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0f172a',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            letterSpacing: '-0.2px'
+          }}
+        >
           {supplierName} {supplierPhone ? `(${supplierPhone})` : ''}
         </span>
       </div>
 
-      {/* 3. DATE OVERLAY (தேதி : _____________) - Larger & Bold */}
+      {/* 3. DATE OVERLAY (தேதி : _____________) */}
       <div
-        className="absolute flex items-center justify-center z-10"
         style={{
-          top: '17.6%',
+          position: 'absolute',
+          zIndex: 10,
+          top: '17.8%',
           left: '73.5%',
           width: '22.5%',
-          height: '4.0%'
+          height: '3.8%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxSizing: 'border-box'
         }}
       >
-        <span className="font-black font-mono text-slate-950 text-[14px] sm:text-[15.5px] tracking-tight">
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '14.5px',
+            fontWeight: 700,
+            color: '#0f172a',
+            letterSpacing: '-0.3px'
+          }}
+        >
           {dateFormatted}
         </span>
       </div>
 
-      {/* 4. TABLE BODY ITEMS OVERLAY (top: 29.2% to 65.72%) - Enhanced Readability */}
+      {/* 4. TABLE BODY ITEMS OVERLAY (Starts safely below header line with 25px top padding) */}
       <div
-        className="absolute z-10"
         style={{
-          top: '29.3%',
+          position: 'absolute',
+          zIndex: 10,
+          top: '31.2%', // Safely below the table header border (y=295 / 28.8%) so Row 1 never touches the line
           left: '3.32%',
           width: '93.64%',
-          height: '36.4%'
+          height: '34.5%',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
         }}
       >
         {items.map((it, idx) => {
           const splitIt = splitAmount(it.amount);
+          const topOffset = idx * (rowHeightPx + rowGapPx);
           return (
             <div
               key={idx}
-              className="absolute w-full flex items-center"
               style={{
-                top: `${idx * itemRowHeightPct}%`,
-                height: `${itemRowHeightPct}%`
+                position: 'absolute',
+                top: `${topOffset}px`,
+                left: 0,
+                width: '100%',
+                height: `${rowHeightPx}px`,
+                display: 'flex',
+                alignItems: 'center',
+                boxSizing: 'border-box'
               }}
             >
-              {/* Col 1: விலை (Rate) - Larger font */}
+              {/* Col 1: விலை (Rate) - Centered */}
               <div
-                className="flex items-center justify-center h-full"
-                style={{ width: '14.33%' }}
+                style={{
+                  width: '14.33%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxSizing: 'border-box'
+                }}
               >
-                <span className="font-black font-mono text-[14.5px] sm:text-[16px] text-slate-950">
+                <span
+                  style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    letterSpacing: '-0.2px'
+                  }}
+                >
                   {it.rate > 0 ? `₹${it.rate}` : '—'}
                 </span>
               </div>
 
-              {/* Col 2: விவரம் (Description) - Larger bold Tamil with generous horizontal padding */}
+              {/* Col 2: விவரம் (Description) - Left aligned with generous padding away from border */}
               <div
-                className="flex items-center justify-start h-full pl-3 pr-2"
-                style={{ width: '48.74%' }}
+                style={{
+                  width: '48.74%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  paddingLeft: '14px',
+                  paddingRight: '10px',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden'
+                }}
               >
-                <span className="font-extrabold font-tamil text-[14.5px] sm:text-[15.5px] text-slate-950 truncate leading-snug">
+                <span
+                  style={{
+                    fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
+                    fontSize: '14.5px',
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: '1.3'
+                  }}
+                >
                   {it.description}
                 </span>
               </div>
 
-              {/* Col 3: எண்ணம் (Quantity / Count) - Larger bold font */}
+              {/* Col 3: எண்ணம் (Quantity / Count) - Centered */}
               <div
-                className="flex items-center justify-center h-full"
-                style={{ width: '13.44%' }}
+                style={{
+                  width: '13.44%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxSizing: 'border-box'
+                }}
               >
-                <span className="font-black font-mono text-[15px] sm:text-[17px] text-slate-950">
+                <span
+                  style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSize: '15.5px',
+                    fontWeight: 700,
+                    color: '#0f172a'
+                  }}
+                >
                   {it.quantity}
                 </span>
               </div>
 
-              {/* Col 4: மொத்தம் (Rupees & Paise) - Larger bold font, no border touching */}
+              {/* Col 4: மொத்தம் (Rupees & Paise) - Right aligned with padding away from divider */}
               <div
-                className="flex items-center h-full"
-                style={{ width: '23.49%' }}
+                style={{
+                  width: '23.49%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxSizing: 'border-box'
+                }}
               >
                 {/* Rupees */}
-                <div className="w-[68%] text-right pr-2.5">
-                  <span className="font-black font-mono text-[15px] sm:text-[17px] text-slate-950">
+                <div
+                  style={{
+                    width: '68%',
+                    textAlign: 'right',
+                    paddingRight: '12px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                      fontSize: '15.5px',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      letterSpacing: '-0.3px'
+                    }}
+                  >
                     {splitIt.rupees}
                   </span>
                 </div>
                 {/* Paise */}
-                <div className="w-[32%] text-center">
-                  <span className="font-black font-mono text-[12.5px] sm:text-[14px] text-slate-800">
+                <div
+                  style={{
+                    width: '32%',
+                    textAlign: 'center',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#334155'
+                    }}
+                  >
                     {splitIt.paise}
                   </span>
                 </div>
@@ -214,158 +351,305 @@ const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
         })}
       </div>
 
-      {/* 5. GROSS TOTAL (மொத்தத் தொகை) AMOUNT BOX - Enhanced Readability */}
+      {/* 5. GROSS TOTAL (மொத்தத் தொகை) AMOUNT BOX */}
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '65.82%',
           left: '72.75%',
           width: '24.20%',
-          height: '4.69%'
+          height: '4.69%',
+          display: 'flex',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-[68%] text-right pr-2.5">
-          <span className="font-black font-mono text-[16px] sm:text-[18px] text-slate-950">
+        <div
+          style={{
+            width: '68%',
+            textAlign: 'right',
+            paddingRight: '12px',
+            boxSizing: 'border-box'
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '16.5px',
+              fontWeight: 700,
+              color: '#0f172a',
+              letterSpacing: '-0.3px'
+            }}
+          >
             {splitGross.rupees}
           </span>
         </div>
-        <div className="w-[32%] text-center">
-          <span className="font-black font-mono text-[13px] sm:text-[14.5px] text-slate-800">
+        <div
+          style={{
+            width: '32%',
+            textAlign: 'center',
+            boxSizing: 'border-box'
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#334155'
+            }}
+          >
             {splitGross.paise}
           </span>
         </div>
       </div>
 
-      {/* 6. DEDUCTIONS ROW 1 (கமிஷன் & கேட்) - Larger Bold Values */}
+      {/* 6. DEDUCTIONS ROW 1 (கமிஷன் & கேட்) */}
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '70.61%',
           left: '21.0%',
           width: '25.0%',
-          height: '3.61%'
+          height: '3.61%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '14px',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-full text-right pr-3">
-          <span className="font-black font-mono text-[14.5px] sm:text-[16.5px] text-slate-950">
-            {comm > 0 ? comm.toLocaleString('en-IN') : '—'}
-          </span>
-        </div>
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0f172a'
+          }}
+        >
+          {comm > 0 ? comm.toLocaleString('en-IN') : '—'}
+        </span>
       </div>
 
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '70.61%',
           left: '65.5%',
           width: '30.5%',
-          height: '3.61%'
+          height: '3.61%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '18px',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-full text-right pr-4">
-          <span className="font-black font-mono text-[14.5px] sm:text-[16.5px] text-slate-950">
-            {gate > 0 ? gate.toLocaleString('en-IN') : '—'}
-          </span>
-        </div>
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0f172a'
+          }}
+        >
+          {gate > 0 ? gate.toLocaleString('en-IN') : '—'}
+        </span>
       </div>
 
-      {/* 7. DEDUCTIONS ROW 2 (கூலி & வாடகை) - Larger Bold Values */}
+      {/* 7. DEDUCTIONS ROW 2 (கூலி & வாடகை) */}
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '74.32%',
           left: '16.5%',
           width: '29.5%',
-          height: '3.81%'
+          height: '3.81%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '14px',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-full text-right pr-3">
-          <span className="font-black font-mono text-[14.5px] sm:text-[16.5px] text-slate-950">
-            {coolie > 0 ? coolie.toLocaleString('en-IN') : '—'}
-          </span>
-        </div>
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0f172a'
+          }}
+        >
+          {coolie > 0 ? coolie.toLocaleString('en-IN') : '—'}
+        </span>
       </div>
 
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '74.32%',
           left: '65.5%',
           width: '30.5%',
-          height: '3.81%'
+          height: '3.81%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '18px',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-full text-right pr-4">
-          <span className="font-black font-mono text-[14.5px] sm:text-[16.5px] text-slate-950">
-            {rent > 0 ? rent.toLocaleString('en-IN') : '—'}
-          </span>
-        </div>
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0f172a'
+          }}
+        >
+          {rent > 0 ? rent.toLocaleString('en-IN') : '—'}
+        </span>
       </div>
 
-      {/* 8. PREVIOUS BALANCE (பற்று - முன் பாக்கி) AMOUNT BOX - Prominent */}
+      {/* 8. PREVIOUS BALANCE (பற்று - முன் பாக்கி) AMOUNT BOX */}
       <div
-        className="absolute flex items-center justify-end z-10 pr-4"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '78.22%',
           left: '72.75%',
           width: '24.20%',
-          height: '3.91%'
+          height: '3.91%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '18px',
+          boxSizing: 'border-box'
         }}
       >
-        <span className="font-black font-mono text-[16px] sm:text-[18px] text-slate-950">
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '16.5px',
+            fontWeight: 700,
+            color: '#0f172a'
+          }}
+        >
           {prevBal ? prevBal.toLocaleString('en-IN') : '—'}
         </span>
       </div>
 
-      {/* 9. GRAND TOTAL (மொத்தம்) AMOUNT BOX - Prominent & Bold */}
+      {/* 9. GRAND TOTAL (மொத்தம்) AMOUNT BOX */}
       <div
-        className="absolute flex items-center z-10"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '82.23%',
           left: '72.75%',
           width: '24.20%',
-          height: '4.79%'
+          height: '4.79%',
+          display: 'flex',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}
       >
-        <div className="w-[68%] text-right pr-2.5">
-          <span className="font-black font-mono text-[18px] sm:text-[21px] text-slate-950">
+        <div
+          style={{
+            width: '68%',
+            textAlign: 'right',
+            paddingRight: '12px',
+            boxSizing: 'border-box'
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '18px',
+              fontWeight: 800,
+              color: '#0f172a',
+              letterSpacing: '-0.3px'
+            }}
+          >
             {splitTotal.rupees}
           </span>
         </div>
-        <div className="w-[32%] text-center">
-          <span className="font-black font-mono text-[14px] sm:text-[15.5px] text-slate-900">
+        <div
+          style={{
+            width: '32%',
+            textAlign: 'center',
+            boxSizing: 'border-box'
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: '14px',
+              fontWeight: 800,
+              color: '#0f172a'
+            }}
+          >
             {splitTotal.paise}
           </span>
         </div>
       </div>
 
-      {/* 10. PAYMENT ROW (கொடுத்தது & மீதி பாக்கி) - High-Visibility 50/50 */}
-      {/* கொடுத்தது (Amount Paid) */}
+      {/* 10. PAYMENT ROW (கொடுத்தது & மீதி பாக்கி) */}
+      {/* கொடுத்தது (Amount Paid) in white box */}
       <div
-        className="absolute flex items-center justify-end z-10 pr-3"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '87.11%',
           left: '26.28%',
           width: '22.54%',
-          height: '5.47%'
+          height: '5.47%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '12px',
+          boxSizing: 'border-box'
         }}
       >
-        <span className="font-black font-mono text-[16px] sm:text-[18.5px] text-forest-800">
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '16px',
+            fontWeight: 700,
+            color: '#15803d'
+          }}
+        >
           {amountPaid > 0 ? `₹${amountPaid.toLocaleString('en-IN')}` : '₹0'}
         </span>
       </div>
 
-      {/* மீதி பாக்கி (Remaining Balance) in bold red */}
+      {/* மீதி பாக்கி (Remaining Balance) in white box */}
       <div
-        className="absolute flex items-center justify-end z-10 pr-4"
         style={{
+          position: 'absolute',
+          zIndex: 10,
           top: '87.11%',
           left: '72.06%',
           width: '24.90%',
-          height: '5.47%'
+          height: '5.47%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingRight: '16px',
+          boxSizing: 'border-box'
         }}
       >
-        <span className="font-black font-mono text-[17.5px] sm:text-[20px] text-red-600">
+        <span
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '17px',
+            fontWeight: 800,
+            color: '#dc2626'
+          }}
+        >
           ₹{remainingBalance.toLocaleString('en-IN')}
         </span>
       </div>

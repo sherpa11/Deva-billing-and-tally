@@ -44,132 +44,13 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
   const dateFormatted = formatDate(bill.transactionDate || bill.createdAt);
 
   /**
-   * Guaranteed 1-Sheet A5 Print via Isolated Hidden Iframe
-   * This eliminates all background page overflow, modals, backdrops, and multi-page height bugs.
+   * Direct Window Print:
+   * Uses the live DOM rendered in the React Portal so 100% of dynamic data,
+   * fonts, and images are guaranteed to be present with zero state loss.
    */
   const handlePrint = () => {
     setShowOptions(false);
-    if (!printAreaRef.current) {
-      window.print();
-      return;
-    }
-
-    try {
-      let printFrame = document.getElementById('supplier-bill-print-iframe');
-      if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'supplier-bill-print-iframe';
-        printFrame.style.position = 'fixed';
-        printFrame.style.left = '-99999px';
-        printFrame.style.top = '0';
-        printFrame.style.width = '148mm';
-        printFrame.style.height = '210mm';
-        printFrame.style.border = 'none';
-        printFrame.style.zIndex = '-9999';
-        document.body.appendChild(printFrame);
-      }
-
-      const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-      frameDoc.open();
-      frameDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Supplier_Bill_${dateFormatted}</title>
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=Mukta+Malar:wght@400;600;700;800&family=Noto+Sans+Tamil:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-            <style>
-              @page {
-                size: A5 portrait !important;
-                margin: 0 !important;
-              }
-              *, *:before, *:after {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 148mm !important;
-                height: 210mm !important;
-                max-width: 148mm !important;
-                max-height: 210mm !important;
-                overflow: hidden !important;
-                background: #ffffff !important;
-                font-family: 'Noto Sans Tamil', 'Mukta Malar', sans-serif;
-              }
-              .a5-sheet-wrapper {
-                width: 148mm !important;
-                height: 210mm !important;
-                max-height: 210mm !important;
-                overflow: hidden !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-                page-break-before: avoid !important;
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-                break-before: avoid !important;
-                break-after: avoid !important;
-                break-inside: avoid !important;
-              }
-              #supplier-printable-bill {
-                width: 138mm !important;
-                height: 195.4mm !important;
-                max-width: 138mm !important;
-                max-height: 195.4mm !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                border-radius: 0 !important;
-                overflow: hidden !important;
-                page-break-before: avoid !important;
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-                break-before: avoid !important;
-                break-after: avoid !important;
-                break-inside: avoid !important;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="a5-sheet-wrapper">
-              ${printAreaRef.current.outerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      frameDoc.close();
-
-      const triggerIframePrint = () => {
-        setTimeout(() => {
-          try {
-            printFrame.contentWindow.focus();
-            printFrame.contentWindow.print();
-          } catch (e) {
-            console.error('Iframe print failed, falling back to window.print():', e);
-            window.print();
-          }
-        }, 200);
-      };
-
-      const img = frameDoc.querySelector('img');
-      if (img && !img.complete) {
-        img.onload = triggerIframePrint;
-        img.onerror = triggerIframePrint;
-      } else {
-        triggerIframePrint();
-      }
-    } catch (err) {
-      console.warn('Iframe print initialization warning, fallback to window.print():', err);
-      window.print();
-    }
+    window.print();
   };
 
   const handleDownloadImage = async () => {
@@ -302,7 +183,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
         </div>
       </div>
 
-      {/* Direct Fallback Print CSS - Strictly 1 Single Sheet A5 Portrait (148mm x 210mm) if printed via Ctrl+P */}
+      {/* Direct Single-Sheet A5 Print CSS (148mm x 210mm) */}
       <style>{`
         @media print {
           @page {
@@ -310,7 +191,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
             margin: 0 !important;
           }
           *, *:before, *:after {
-            box-sizing: border-box;
+            box-sizing: border-box !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -375,6 +256,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
             margin: 0 !important;
             background: #ffffff !important;
             overflow: hidden !important;
+            width: 148mm !important;
             height: 210mm !important;
             max-height: 210mm !important;
             display: flex !important;
