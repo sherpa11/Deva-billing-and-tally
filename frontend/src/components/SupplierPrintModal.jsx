@@ -300,18 +300,21 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
 
                   {/* Decorative Light-Green Wave & Centered Proprietor Banner */}
                   <div className="relative mt-2 mb-1 flex items-center justify-center overflow-hidden py-1">
-                    {/* Decorative Wave SVG behind */}
+                    {/* Decorative Flowing Wave Ribbon SVG */}
                     <svg
-                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full h-8 text-[#bbf7d0] pointer-events-none"
-                      viewBox="0 0 500 32"
+                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full h-8 pointer-events-none"
+                      viewBox="0 0 500 28"
                       preserveAspectRatio="none"
-                      fill="currentColor"
                     >
-                      <path d="M0,16 C100,32 180,2 250,16 C320,30 400,2 500,16 L500,30 L0,30 Z" opacity="0.8" />
+                      <path
+                        d="M0,6 C120,24 180,-2 250,10 C320,22 380,0 500,10 L500,22 C380,12 320,32 250,20 C180,8 120,32 0,16 Z"
+                        fill="#bbf7d0"
+                        opacity="0.9"
+                      />
                     </svg>
 
                     {/* Proprietor Pill in Center */}
-                    <div className="relative z-10 bg-[#e2f5e8] border border-[#0a4d2e]/50 px-8 py-0.5 rounded-full text-center shadow-2xs">
+                    <div className="relative z-10 bg-[#e2f5e8] border border-[#0a4d2e]/40 px-8 py-0.5 rounded-full text-center shadow-2xs">
                       <span className="text-xs sm:text-[13px] font-bold text-slate-900 font-tamil">
                         Prop: <span className="text-red-600 font-black">{settings.proprietor || 'R.தேவதாஸ்'}</span>
                       </span>
@@ -320,9 +323,9 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
 
                   {/* Customer & Date Line: திரு (Left) & தேதி (Right) */}
                   <div className="flex justify-between items-center text-[13px] font-black text-slate-900 px-1 py-1 mt-0.5">
-                    <div className="flex items-baseline flex-1 mr-3">
+                    <div className="flex items-baseline flex-1 mr-3 min-w-0">
                       <span className="font-black text-[#0a4d2e] shrink-0 font-tamil text-[14px]">திரு : </span>
-                      <span className="font-bold text-slate-900 ml-2 px-2 border-b-2 border-slate-700 flex-1 truncate font-tamil">
+                      <span className="font-bold text-slate-900 ml-2 px-2 border-b-2 border-slate-700 flex-1 font-tamil text-xs sm:text-[13px] leading-tight">
                         {supplierName} {supplierPhone ? `(${supplierPhone})` : ''}
                       </span>
                     </div>
@@ -338,21 +341,21 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                 {/* 2. Main 4-Column Table with Large Open Vertical Track Area (~85mm) */}
                 <div className="w-full border-[2.5px] border-[#0a4d2e] rounded-t-xl overflow-hidden mt-1 bg-white flex flex-col flex-1">
                   {/* Table Header Row */}
-                  <div className="flex border-b-[2.5px] border-[#0a4d2e] text-[#0a4d2e] font-black bg-white text-center text-[13px] sm:text-sm font-tamil">
-                    <div className="w-[14%] py-1.5 px-1 border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center">
+                  <div className="flex border-b-[2.5px] border-[#0a4d2e] text-[#0a4d2e] font-black bg-white text-center text-[13px] sm:text-sm font-tamil items-stretch min-h-[10mm]">
+                    <div className="w-[14%] border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center py-1 font-black">
                       விலை
                     </div>
-                    <div className="w-[48%] py-1.5 px-2 border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center">
+                    <div className="w-[48%] border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center py-1 font-black">
                       விவரம்
                     </div>
-                    <div className="w-[14%] py-1.5 px-1 border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center">
+                    <div className="w-[14%] border-r-[2.5px] border-[#0a4d2e] flex items-center justify-center py-1 font-black">
                       எண்ணம்
                     </div>
-                    <div className="w-[24%]">
-                      <div className="text-[13px] font-black border-b-[2px] border-[#0a4d2e] py-0.5">
+                    <div className="w-[24%] flex flex-col justify-between">
+                      <div className="text-[12.5px] font-black border-b-[2px] border-[#0a4d2e] py-0.5 text-center">
                         மொத்தம்
                       </div>
-                      <div className="flex text-[11px] font-bold py-0.5">
+                      <div className="flex text-[11px] font-bold py-0.5 text-center">
                         <span className="w-2/3 border-r-[2px] border-[#0a4d2e]">ரூ.</span>
                         <span className="w-1/3">பை.</span>
                       </div>
