@@ -237,20 +237,21 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
 
           {/* Printable Bill Area Container */}
           <div className="p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
-            {/* EXACT OFFICIAL SUPPLIER BILL PAD (STANDARD A5: 148mm x 210mm) */}
+            {/* EXACT MASTER REFERENCE SUPPLIER BILL PAD (STANDARD A5: 148mm x 210mm) */}
             <div
               ref={printAreaRef}
               id="supplier-printable-bill"
-              className="bg-white text-slate-900 shadow-md font-tamil w-[148mm] min-h-[200mm] max-w-[148mm] mx-auto box-border flex flex-col justify-between p-3.5 border-2 border-[#125538] rounded-2xl select-none"
+              className="bg-white text-slate-900 shadow-md font-tamil w-[138mm] min-h-[198mm] max-w-[138mm] mx-auto box-border flex flex-col justify-between p-3.5 border-2 border-[#125538] rounded-2xl select-none"
               style={{
                 fontFamily: '"Noto Sans Tamil", "Mukta Malar", sans-serif',
-                borderColor: '#125538'
+                borderColor: '#125538',
+                boxSizing: 'border-box'
               }}
             >
-              {/* Top Section */}
-              <div>
-                {/* Header Card */}
-                <div className="border-2 border-[#125538] rounded-xl p-2 mb-1.5 bg-white">
+              {/* Main Content Area */}
+              <div className="flex-1 flex flex-col">
+                {/* 1. Header Card */}
+                <div className="border-2 border-[#125538] rounded-xl p-2 mb-1 bg-white">
                   <div className="flex items-start justify-between">
                     {/* Left: DEVA Logo Box */}
                     <div className="w-[68px] h-[58px] rounded-lg border border-[#125538]/50 p-1 flex items-center justify-center shrink-0 bg-white">
@@ -302,16 +303,16 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                   </div>
                 </div>
 
-                {/* Proprietor Curved Pill */}
-                <div className="flex justify-center my-1">
-                  <div className="bg-[#e4f3ea] border border-[#125538]/30 px-6 py-0.5 rounded-full text-center shadow-xs">
+                {/* 2. Proprietor Curved Pill */}
+                <div className="flex justify-center my-0.5">
+                  <div className="bg-[#dcf0e2] border border-[#125538]/40 px-6 py-0.5 rounded-full text-center shadow-2xs">
                     <span className="text-xs font-bold text-slate-800">
                       Prop: <span className="text-red-600 font-black">{settings.proprietor || 'R.தேவதாஸ்'}</span>
                     </span>
                   </div>
                 </div>
 
-                {/* Customer & Date Line: திரு (Left) & தேதி (Right) */}
+                {/* 3. Customer & Date Line: திரு (Left) & தேதி (Right) */}
                 <div className="flex justify-between items-center text-xs font-bold text-slate-900 px-1 py-1">
                   <div className="flex items-baseline flex-1 mr-2">
                     <span className="font-bold text-slate-800 shrink-0">திரு : </span>
@@ -321,160 +322,171 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                   </div>
                   <div className="flex items-baseline shrink-0">
                     <span className="font-bold text-slate-800">தேதி : </span>
-                    <span className="font-mono font-bold text-xs ml-1.5 px-2 border-b border-slate-700 min-w-[80px] text-center">
+                    <span className="font-mono font-bold text-xs ml-1.5 px-2 border-b border-slate-700 min-w-[85px] text-center">
                       {dateFormatted}
                     </span>
                   </div>
                 </div>
 
-                {/* Main 4-Column Table */}
-                <table className="w-full text-center border-collapse border-2 border-[#125538] text-[11px] mt-0.5">
-                  <thead>
-                    <tr className="border-b-2 border-[#125538] text-[#125538] font-black bg-slate-50/60">
-                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">விலை</th>
-                      <th className="border-r-2 border-[#125538] py-1 px-2 text-center w-[45%]">விவரம்</th>
-                      <th className="border-r-2 border-[#125538] py-1 px-1 w-[16%]">எண்ணம்</th>
-                      <th className="py-0 px-1 w-[23%]">
-                        <div className="text-[11px] font-black border-b border-[#125538] py-0.5">மொத்தம்</div>
-                        <div className="flex text-[9px] font-bold py-0.5">
-                          <span className="w-2/3 border-r border-[#125538]">ரூ.</span>
-                          <span className="w-1/3">பை.</span>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => {
-                      const split = splitAmount(item.amount);
-                      return (
-                        <tr key={idx} className="border-b border-[#125538]/70 font-semibold text-slate-900 h-6">
-                          <td className="border-r-2 border-[#125538] py-0.5 px-1 text-center font-mono">
-                            {item.rate > 0 ? `₹${item.rate}` : '—'}
-                          </td>
-                          <td className="border-r-2 border-[#125538] py-0.5 px-2 text-left truncate">
-                            {item.description || 'தக்காளி பெட்டி'}
-                          </td>
-                          <td className="border-r-2 border-[#125538] py-0.5 px-1 text-center font-mono font-bold">
-                            {item.quantity || item.bigEquivalent || '—'}
-                          </td>
-                          <td className="py-0.5 px-1 text-right font-mono font-bold">
-                            <div className="flex items-center">
-                              <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{split.rupees}</span>
-                              <span className="w-1/3 text-center text-[9px]">{split.paise}</span>
+                {/* 4. Main 4-Column Table with Large Open Vertical Track Area (~76mm) */}
+                <div className="w-full border-2 border-[#125538] text-[11px] mt-0.5 bg-white flex flex-col flex-1">
+                  {/* Table Header Row */}
+                  <div className="flex border-b-2 border-[#125538] text-[#125538] font-black bg-slate-50/60 text-center text-xs">
+                    <div className="w-[15%] py-1.5 px-1 border-r-2 border-[#125538] flex items-center justify-center">
+                      விலை
+                    </div>
+                    <div className="w-[48%] py-1.5 px-2 border-r-2 border-[#125538] flex items-center justify-center">
+                      விவரம்
+                    </div>
+                    <div className="w-[15%] py-1.5 px-1 border-r-2 border-[#125538] flex items-center justify-center">
+                      எண்ணம்
+                    </div>
+                    <div className="w-[22%]">
+                      <div className="text-[11px] font-black border-b border-[#125538] py-0.5">
+                        மொத்தம்
+                      </div>
+                      <div className="flex text-[9px] font-bold py-0.5">
+                        <span className="w-2/3 border-r border-[#125538]">ரூ.</span>
+                        <span className="w-1/3">பை.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Table Body: Large Open Vertical Area matching Master Reference (~76mm tall) */}
+                  <div className="relative min-h-[76mm] flex-1 flex">
+                    {/* Background Vertical Column Track Lines that run continuously to the bottom */}
+                    <div className="absolute inset-0 flex pointer-events-none">
+                      <div className="w-[15%] border-r-2 border-[#125538] h-full" />
+                      <div className="w-[48%] border-r-2 border-[#125538] h-full" />
+                      <div className="w-[15%] border-r-2 border-[#125538] h-full" />
+                      <div className="w-[22%] flex h-full">
+                        <div className="w-2/3 border-r border-[#125538]/50 h-full" />
+                        <div className="w-1/3 h-full" />
+                      </div>
+                    </div>
+
+                    {/* Purchase Items Rendered at Top of this Open Track Area */}
+                    <div className="relative z-10 w-full">
+                      {items.map((item, idx) => {
+                        const split = splitAmount(item.amount);
+                        return (
+                          <div key={idx} className="flex font-semibold text-slate-900 min-h-[6.5mm] items-center text-xs">
+                            <div className="w-[15%] text-center font-mono py-1">
+                              {item.rate > 0 ? `₹${item.rate}` : '—'}
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-
-                    {/* Ruled blank rows matching bill pad */}
-                    {Array.from({ length: emptyRowsCount }).map((_, idx) => (
-                      <tr key={`empty-${idx}`} className="border-b border-[#125538]/50 h-5">
-                        <td className="border-r-2 border-[#125538]"></td>
-                        <td className="border-r-2 border-[#125538]"></td>
-                        <td className="border-r-2 border-[#125538]"></td>
-                        <td>
-                          <div className="flex h-full">
-                            <span className="w-2/3 border-r border-[#125538]/30"></span>
-                            <span className="w-1/3"></span>
+                            <div className="w-[48%] text-left px-2 truncate py-1">
+                              {item.description || 'தக்காளி பெரிய பெட்டி'}
+                            </div>
+                            <div className="w-[15%] text-center font-mono font-bold py-1">
+                              {item.quantity || item.bigEquivalent || '—'}
+                            </div>
+                            <div className="w-[22%] flex items-center font-mono font-bold py-1">
+                              <span className="w-2/3 text-right pr-1.5">{split.rupees}</span>
+                              <span className="w-1/3 text-center text-[10px]">{split.paise}</span>
+                            </div>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
 
-                {/* Deductions & Financial Summary Section - EXACT REPRODUCTION OF REFERENCE DESIGN */}
-                <div className="border-2 border-[#125538] border-t-0 text-[10.5px] font-bold">
+                {/* 5. Financial Summary Section - EXACT ATTACHMENT TO TABLE */}
+                <div className="border-2 border-[#125538] border-t-0 text-xs font-bold bg-white">
                   {/* Row 1: மொத்தத் தொகை (Gross Total) */}
-                  <div className="flex border-b border-[#125538] h-6 items-center bg-[#e4f3ea]">
-                    <div className="w-[77%] px-2 text-right border-r-2 border-[#125538] font-black text-[#125538] text-[11px]">
+                  <div className="flex border-b border-[#125538] h-[7.2mm] items-center bg-[#dcf0e2]">
+                    <div className="w-[78%] px-2 text-right border-r-2 border-[#125538] font-black text-[#125538] text-xs">
                       மொத்தத் தொகை (Gross Total) :
                     </div>
-                    <div className="w-[23%] px-1 text-right font-mono font-black text-[#125538]">
-                      <div className="flex items-center">
-                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitGross.rupees}</span>
-                        <span className="w-1/3 text-center text-[9px]">{splitGross.paise}</span>
-                      </div>
+                    <div className="w-[22%] px-0 text-right font-mono font-black text-[#125538] h-full flex items-center">
+                      <span className="w-2/3 text-right pr-1.5 border-r border-[#125538]/50 h-full flex items-center justify-end">{splitGross.rupees}</span>
+                      <span className="w-1/3 text-center text-[10px] h-full flex items-center justify-center">{splitGross.paise}</span>
                     </div>
                   </div>
 
                   {/* Row 2: கமிஷன் & கேட் */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[43%] px-2 flex justify-between items-baseline border-r border-dotted border-[#125538]/60">
+                  <div className="flex border-b border-[#125538] h-[7.2mm] items-center bg-white">
+                    <div className="w-[45%] px-2 flex justify-between items-center border-r-2 border-[#125538] h-full">
                       <span className="text-slate-800 font-bold">கமிஷன் :</span>
-                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[40px] text-right">
+                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[45px] text-right">
                         {comm > 0 ? comm : ''}
                       </span>
                     </div>
-                    <div className="w-[34%] px-2 flex justify-between items-baseline border-r-2 border-[#125538]">
+                    <div className="w-[33%] px-2 flex justify-between items-center border-r-2 border-[#125538] h-full">
                       <span className="text-slate-800 font-bold">கேட் : :</span>
-                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[34px] text-right">
+                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[38px] text-right">
                         {gate > 0 ? gate : ''}
                       </span>
                     </div>
-                    <div className="w-[23%] px-1 text-right font-mono text-[9px] text-slate-700"></div>
+                    <div className="w-[22%] h-full flex">
+                      <span className="w-2/3 border-r border-[#125538]/50 h-full" />
+                      <span className="w-1/3 h-full" />
+                    </div>
                   </div>
 
                   {/* Row 3: கூலி & வாடகை */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[43%] px-2 flex justify-between items-baseline border-r border-dotted border-[#125538]/60">
+                  <div className="flex border-b border-[#125538] h-[7.2mm] items-center bg-white">
+                    <div className="w-[45%] px-2 flex justify-between items-center border-r-2 border-[#125538] h-full">
                       <span className="text-slate-800 font-bold">கூலி :</span>
-                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[40px] text-right">
+                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[45px] text-right">
                         {coolie > 0 ? coolie : ''}
                       </span>
                     </div>
-                    <div className="w-[34%] px-2 flex justify-between items-baseline border-r-2 border-[#125538]">
+                    <div className="w-[33%] px-2 flex justify-between items-center border-r-2 border-[#125538] h-full">
                       <span className="text-slate-800 font-bold">வாடகை :</span>
-                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[34px] text-right">
+                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-1 min-w-[38px] text-right">
                         {rent > 0 ? rent : ''}
                       </span>
                     </div>
-                    <div className="w-[23%] px-1 text-right font-mono text-[9px] text-slate-700"></div>
+                    <div className="w-[22%] h-full flex">
+                      <span className="w-2/3 border-r border-[#125538]/50 h-full" />
+                      <span className="w-1/3 h-full" />
+                    </div>
                   </div>
 
                   {/* Row 4: பற்று (முன் பாக்கி) */}
-                  <div className="flex border-b border-[#125538] h-6 items-center">
-                    <div className="w-[77%] px-2 flex justify-between items-baseline border-r-2 border-[#125538]">
+                  <div className="flex border-b border-[#125538] h-[7.2mm] items-center bg-white">
+                    <div className="w-[78%] px-2 flex justify-between items-center border-r-2 border-[#125538] h-full">
                       <span className="text-slate-800 font-bold">பற்று (முன் பாக்கி) :</span>
-                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-2 min-w-[65px] text-right">
+                      <span className="font-mono font-bold text-slate-900 border-b border-dotted border-slate-600 px-2 min-w-[70px] text-right">
                         {prevBal !== 0 ? prevBal : ''}
                       </span>
                     </div>
-                    <div className="w-[23%] px-1 text-right font-mono text-[9px] text-slate-700"></div>
+                    <div className="w-[22%] h-full flex">
+                      <span className="w-2/3 border-r border-[#125538]/50 h-full" />
+                      <span className="w-1/3 h-full" />
+                    </div>
                   </div>
 
                   {/* Row 5: மொத்தம் */}
-                  <div className="flex border-b border-[#125538] h-6.5 items-center bg-[#e4f3ea]">
-                    <div className="w-[77%] px-2 text-center border-r-2 border-[#125538] font-black text-[#125538] text-[11px]">
+                  <div className="flex border-b-2 border-[#125538] h-[8mm] items-center bg-[#dcf0e2]">
+                    <div className="w-[78%] px-2 text-center border-r-2 border-[#125538] font-black text-[#125538] text-sm tracking-wide">
                       மொத்தம் :
                     </div>
-                    <div className="w-[23%] px-1 text-right font-mono font-black text-[#125538]">
-                      <div className="flex items-center">
-                        <span className="w-2/3 text-right pr-1 border-r border-[#125538]/40">{splitTotal.rupees}</span>
-                        <span className="w-1/3 text-center text-[9px]">{splitTotal.paise}</span>
-                      </div>
+                    <div className="w-[22%] px-0 text-right font-mono font-black text-[#125538] h-full flex items-center">
+                      <span className="w-2/3 text-right pr-1.5 border-r border-[#125538]/50 h-full flex items-center justify-end">{splitTotal.rupees}</span>
+                      <span className="w-1/3 text-center text-[10px] h-full flex items-center justify-center">{splitTotal.paise}</span>
                     </div>
                   </div>
 
-                  {/* Row 6: NEW PAYMENT ROW (கொடுத்தது & மீதி பாக்கி) EXACTLY AS IN REFERENCE DESIGN */}
-                  <div className="flex h-7 items-stretch bg-white">
-                    {/* Left 50%: கொடுத்தது : [ White Amount Box ] */}
+                  {/* Row 6: NEW PAYMENT ROW (கொடுத்தது & மீதி பாக்கி) EXACT 50/50 SPLIT */}
+                  <div className="flex h-[8mm] items-stretch bg-white">
+                    {/* Left 50%: கொடுத்தது */}
                     <div className="w-1/2 flex items-stretch border-r-2 border-[#125538]">
-                      <div className="w-[50%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-[10.5px]">
+                      <div className="w-[45%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-xs">
                         கொடுத்தது :
                       </div>
-                      <div className="w-[50%] px-1.5 flex items-center justify-end font-mono font-black text-slate-900 bg-white text-xs">
-                        ₹{splitPaid.rupees}.{splitPaid.paise}
+                      <div className="w-[55%] px-2 flex items-center justify-end font-mono font-black text-slate-900 bg-white text-xs">
+                        {amountPaid > 0 ? `₹${splitPaid.rupees}.${splitPaid.paise}` : '₹0.00'}
                       </div>
                     </div>
 
-                    {/* Right 50%: மீதி பாக்கி : [ White Amount Box ] */}
+                    {/* Right 50%: மீதி பாக்கி */}
                     <div className="w-1/2 flex items-stretch">
-                      <div className="w-[50%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-[10.5px]">
+                      <div className="w-[45%] px-2 flex items-center justify-start border-r border-[#125538] font-black text-[#125538] text-xs">
                         மீதி பாக்கி :
                       </div>
-                      <div className={`w-[50%] px-1.5 flex items-center justify-end font-mono font-black text-xs bg-white ${
+                      <div className={`w-[55%] px-2 flex items-center justify-end font-mono font-black text-xs bg-white ${
                         remainingBalance > 0 ? 'text-red-600' : remainingBalance < 0 ? 'text-blue-700' : 'text-slate-900'
                       }`}>
                         {remainingBalance < 0 ? `-₹${splitRemaining.rupees}.${splitRemaining.paise}` : `₹${splitRemaining.rupees}.${splitRemaining.paise}`}
@@ -484,14 +496,14 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
                 </div>
               </div>
 
-              {/* Bottom Footer Section */}
-              <div className="pt-2 text-center">
+              {/* 6. Bottom Footer Section */}
+              <div className="pt-2 text-center shrink-0">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="h-0.5 w-12 bg-[#125538]/60" />
-                  <span className="text-xs font-black text-[#125538] tracking-wider">
+                  <div className="h-0.5 w-16 bg-[#125538]" />
+                  <span className="text-xs font-black text-[#125538] tracking-wider font-tamil">
                     {settings.footerNote || 'நன்றி மீண்டும் வருக'}
                   </span>
-                  <div className="h-0.5 w-12 bg-[#125538]/60" />
+                  <div className="h-0.5 w-16 bg-[#125538]" />
                 </div>
               </div>
             </div>
@@ -506,6 +518,11 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
             size: A5 portrait;
             margin: 5mm;
           }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -518,17 +535,19 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
             top: 0 !important;
             width: 138mm !important;
             max-width: 138mm !important;
-            height: 200mm !important;
-            max-height: 200mm !important;
+            height: 198mm !important;
+            max-height: 198mm !important;
             margin: 0 !important;
-            padding: 4mm !important;
+            padding: 3.5mm !important;
             border: 2px solid #125538 !important;
-            border-radius: 12px !important;
+            border-radius: 14px !important;
             box-shadow: none !important;
             box-sizing: border-box !important;
-            page-break-after: avoid;
-            page-break-inside: avoid;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
             overflow: hidden !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
