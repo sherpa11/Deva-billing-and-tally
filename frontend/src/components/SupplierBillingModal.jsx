@@ -25,7 +25,8 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
     },
   ]);
 
-  // Mandi Deductions
+  // Mandi Deductions (Optional - disabled by default, all 0)
+  const [applyDeductions, setApplyDeductions] = useState(false);
   const [deductions, setDeductions] = useState({
     commission: 0,
     gate: 0,
@@ -51,6 +52,8 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
       fetchSuppliers();
       if (initialDate) setDate(initialDate);
       if (defaultSupplierId) setSelectedSupplierId(defaultSupplierId);
+      setApplyDeductions(false);
+      setDeductions({ commission: 0, gate: 0, coolie: 0, rent: 0, debit: 0 });
       setError('');
     }
   }, [isOpen, initialDate, defaultSupplierId]);
@@ -133,20 +136,13 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
   // Calculations
   const grossTotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-  // Dynamic commission calculated from Business Profile Settings
-  useEffect(() => {
-    setDeductions((prev) => ({
-      ...prev,
-      commission: Math.round(grossTotal * (commissionRate / 100)),
-    }));
-  }, [grossTotal, commissionRate]);
-
-  const totalDeductions =
-    (Number(deductions.commission) || 0) +
-    (Number(deductions.gate) || 0) +
-    (Number(deductions.coolie) || 0) +
-    (Number(deductions.rent) || 0) +
-    (Number(deductions.debit) || 0);
+  // Mandi Deductions: Only applied when explicitly enabled and entered by user; otherwise ₹0
+  const totalDeductions = applyDeductions
+    ? (Number(deductions.commission) || 0) +
+      (Number(deductions.gate) || 0) +
+      (Number(deductions.coolie) || 0) +
+      (Number(deductions.rent) || 0)
+    : 0;
 
   // Purchase Net = Gross Total minus Mandi deductions
   const purchaseNetAmount = Math.max(0, Math.round((grossTotal - totalDeductions) * 100) / 100);
@@ -177,9 +173,27 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
         supplierId: selectedSupplierId,
         transactionDate: date,
         items,
-        deductions,
+        deductions: applyDeductions
+          ? {
+              commission: Number(deductions.commission) || 0,
+              gate: Number(deductions.gate) || 0,
+              coolie: Number(deductions.coolie) || 0,
+              rent: Number(deductions.rent) || 0,
+              debit: Number(previousBalance || 0)
+            }
+          : {
+              commission: 0,
+              gate: 0,
+              coolie: 0,
+              rent: 0,
+              debit: Number(previousBalance || 0)
+            },
+        totalDeductions,
+        purchaseNetAmount,
         previousBalance: Number(previousBalance || 0),
+        totalPayable,
         amountPaid: Number(amountPaid || 0),
+        remainingBalance,
         notes,
       };
 
@@ -229,6 +243,7 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
       },
     ]);
     setDeductions({ commission: 0, gate: 0, coolie: 0, rent: 0, debit: 0 });
+    setApplyDeductions(false);
     setNotes('');
     setAmountPaid('');
     setPreviousBalance(0);
@@ -428,10 +443,58 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
         </div>
 
         {/* Mandi Deductions Section */}
-        <div className="bg-surface-bg p-4 rounded-xl border border-surface-border">
-          <div className="text-xs font-semibold text-content-main mb-2.5 flex justify-between">
-            <span>Mandi Deductions (பிடித்தங்கள்)</span>
-            <span className="text-content-secondary font-medium">Total Deductions: ₹{totalDeductions.toLocaleString('en-IN')}</span>
+        <div className={`p-4 rounded-xl border transition-all ${
+          applyDeductions 
+            ? 'bg-forest-50/40 border-forest-300 shadow-2xs' 
+            : 'bg-surface-bg border-surface-border'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-surface-border">
+            <div className="flex items-center gap-2.5">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={applyDeductions}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setApplyDeductions(checked);
+                    if (!checked) {
+                      setDeductions({ commission: 0, gate: 0, coolie: 0, rent: 0, debit: 0 });
+    setApplyDeductions(false);
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-forest-600"></div>
+              </label>
+              <div>
+                <span className="text-xs font-bold text-content-main font-tamil">
+                  Mandi Deductions (பிடித்தங்கள்)
+                </span>
+                <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  applyDeductions
+                    ? 'bg-forest-100 text-forest-800 border border-forest-300'
+                    : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}>
+                  {applyDeductions ? 'பிடித்தங்கள் சேர்க்கப்பட்டது (Enabled)' : 'விலக்கப்பட்டது (Disabled - ₹0)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {applyDeductions && grossTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDeductions(prev => ({ ...prev, commission: Math.round(grossTotal * (commissionRate / 100)) }))}
+                  className="text-[10px] font-bold text-forest-700 bg-white hover:bg-forest-50 border border-forest-300 px-2 py-1 rounded transition-colors"
+                  title={`Calculate ${commissionRate}% commission on gross total`}
+                >
+                  Apply {commissionRate}% Comm (₹{Math.round(grossTotal * (commissionRate / 100)).toLocaleString('en-IN')})
+                </button>
+              )}
+              <span className="text-xs font-bold font-mono text-content-main">
+                Total Deductions: <span className={totalDeductions > 0 ? 'text-status-danger' : 'text-slate-600'}>₹{totalDeductions.toLocaleString('en-IN')}</span>
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -441,36 +504,60 @@ const SupplierBillingModal = ({ isOpen, onClose, onBillSaved, initialDate, defau
               </label>
               <input
                 type="number"
-                value={deductions.commission}
+                disabled={!applyDeductions}
+                value={applyDeductions ? deductions.commission : 0}
                 onChange={(e) => setDeductions({ ...deductions, commission: e.target.value })}
-                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white"
+                className={`w-full p-1.5 text-center font-bold text-xs border rounded ${
+                  applyDeductions
+                    ? 'border-forest-400 bg-white text-slate-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+                placeholder="0"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-content-secondary mb-1">Gate Pass</label>
               <input
                 type="number"
-                value={deductions.gate}
+                disabled={!applyDeductions}
+                value={applyDeductions ? deductions.gate : 0}
                 onChange={(e) => setDeductions({ ...deductions, gate: e.target.value })}
-                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white"
+                className={`w-full p-1.5 text-center font-bold text-xs border rounded ${
+                  applyDeductions
+                    ? 'border-forest-400 bg-white text-slate-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+                placeholder="0"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-content-secondary mb-1">Coolie</label>
               <input
                 type="number"
-                value={deductions.coolie}
+                disabled={!applyDeductions}
+                value={applyDeductions ? deductions.coolie : 0}
                 onChange={(e) => setDeductions({ ...deductions, coolie: e.target.value })}
-                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white"
+                className={`w-full p-1.5 text-center font-bold text-xs border rounded ${
+                  applyDeductions
+                    ? 'border-forest-400 bg-white text-slate-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+                placeholder="0"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-content-secondary mb-1">Rent / Freight</label>
               <input
                 type="number"
-                value={deductions.rent}
+                disabled={!applyDeductions}
+                value={applyDeductions ? deductions.rent : 0}
                 onChange={(e) => setDeductions({ ...deductions, rent: e.target.value })}
-                className="w-full p-1.5 text-center font-bold text-xs border border-surface-border rounded bg-white"
+                className={`w-full p-1.5 text-center font-bold text-xs border rounded ${
+                  applyDeductions
+                    ? 'border-forest-400 bg-white text-slate-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+                placeholder="0"
               />
             </div>
             <div>

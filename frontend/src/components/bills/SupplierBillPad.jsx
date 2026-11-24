@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * SupplierBillPad - Master Reference Supplier Bill Template
@@ -6,7 +6,20 @@ import React from 'react';
  * overlays readable purchase data into the exact blank fields using 100% self-contained
  * inline styles. Sized to 138mm x 195.4mm for physical A5 single-sheet printing.
  */
-const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
+const SupplierBillPad = React.forwardRef(({ bill, supplier, settings = {} }, ref) => {
+  const [imageReady, setImageReady] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/supplier-bill-template.jpg';
+    if (img.complete) {
+      setImageReady(true);
+    } else {
+      img.onload = () => setImageReady(true);
+      img.onerror = () => setImageReady(true);
+    }
+  }, []);
+
   if (!bill) return null;
 
   const formatDate = (dateStr) => {
@@ -25,8 +38,20 @@ const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
     };
   };
 
-  const supplierName = bill.supplierId?.name || bill.supplierName || 'விவசாயி / விற்பனையாளர்';
-  const supplierPhone = bill.supplierId?.phone || '';
+  const resolvedSupplier = (bill.supplierId && typeof bill.supplierId === 'object')
+    ? bill.supplierId
+    : (supplier && typeof supplier === 'object')
+      ? supplier
+      : (bill.supplier && typeof bill.supplier === 'object')
+        ? bill.supplier
+        : null;
+
+  const supplierName = bill.supplierName
+    || resolvedSupplier?.name
+    || '';
+  const supplierPhone = bill.supplierPhone
+    || resolvedSupplier?.phone
+    || '';
   const dateFormatted = formatDate(bill.transactionDate || bill.createdAt);
 
   // Multi-item handling: check bill.items or split bigBoxes and smallBoxes
@@ -111,9 +136,42 @@ const SupplierBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
     >
       {/* 1. Master Reference Supplier Bill Template Background */}
       {/* Note: Template permanently displays 'எண் : 54' in original red ink on the top right */}
+      {!imageReady && (
+        <div
+          className="no-print"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#ffffff',
+            zIndex: 20
+          }}
+        >
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              border: '3px solid #166534',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite'
+            }}
+          />
+          <span style={{ marginTop: '8px', fontSize: '11px', fontWeight: 700, color: '#166534', fontFamily: 'sans-serif' }}>
+            Loading Bill Pad...
+          </span>
+        </div>
+      )}
       <img
         src="/supplier-bill-template.jpg"
         alt="DEVA & CO Supplier Bill Pad"
+        loading="eager"
+        fetchpriority="high"
+        decoding="sync"
+        onLoad={() => setImageReady(true)}
         style={{
           position: 'absolute',
           top: 0,

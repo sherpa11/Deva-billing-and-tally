@@ -5,7 +5,7 @@ import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
 import SupplierBillPad from './bills/SupplierBillPad';
 
-const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
+const SupplierPrintModal = ({ isOpen, onClose, bill, supplier }) => {
   const { settings, fetchSettings } = useSettings();
   const printAreaRef = useRef();
   const dropdownRef = useRef();
@@ -58,7 +58,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
     if (!printAreaRef.current) return;
 
     setIsDownloadingImage(true);
-    const safeSupplierName = (bill.supplierId?.name || bill.supplierName || 'Supplier')
+    const safeSupplierName = (bill.supplierName || bill.supplierId?.name || supplier?.name || 'Supplier')
       .trim()
       .replace(/[\/\s]+/g, '_')
       .replace(/[^a-zA-Z0-9_\-\u0B80-\u0BFF]/g, '');
@@ -178,7 +178,7 @@ const SupplierPrintModal = ({ isOpen, onClose, bill }) => {
           {/* Printable Bill Area Container */}
           <div className="supplier-modal-body p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
             {/* EXACT MASTER REFERENCE SUPPLIER BILL PAD */}
-            <SupplierBillPad ref={printAreaRef} bill={bill} settings={settings} />
+            <SupplierBillPad ref={printAreaRef} bill={bill} supplier={supplier || bill?.supplierId} settings={settings} />
           </div>
         </div>
       </div>

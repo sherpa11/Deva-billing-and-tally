@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * BuyerBillPad - Master Reference Buyer Bill Template
@@ -7,6 +7,19 @@ import React from 'react';
  * inline styles. Sized to 138mm x 195.4mm for physical A5 single-sheet printing.
  */
 const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
+  const [imageReady, setImageReady] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/buyer-bill-template.jpg';
+    if (img.complete) {
+      setImageReady(true);
+    } else {
+      img.onload = () => setImageReady(true);
+      img.onerror = () => setImageReady(true);
+    }
+  }, []);
+
   if (!bill) return null;
 
   const formatDate = (dateStr) => {
@@ -103,9 +116,42 @@ const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
     >
       {/* 1. Master Reference Buyer Bill Template Background */}
       {/* Note: Template permanently displays 'எண் : 54' in original red ink on the top right */}
+      {!imageReady && (
+        <div
+          className="no-print"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#ffffff',
+            zIndex: 20
+          }}
+        >
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              border: '3px solid #166534',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite'
+            }}
+          />
+          <span style={{ marginTop: '8px', fontSize: '11px', fontWeight: 700, color: '#166534', fontFamily: 'sans-serif' }}>
+            Loading Bill Pad...
+          </span>
+        </div>
+      )}
       <img
         src="/buyer-bill-template.jpg"
         alt="DEVA & CO Buyer Bill Pad"
+        loading="eager"
+        fetchpriority="high"
+        decoding="sync"
+        onLoad={() => setImageReady(true)}
         style={{
           position: 'absolute',
           top: 0,

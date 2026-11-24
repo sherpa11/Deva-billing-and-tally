@@ -136,6 +136,7 @@ exports.getSupplierPurchases = async (req, res, next) => {
       Supplier.findById(req.params.id).lean(),
       SupplierBill.find(filter)
         .sort({ transactionDate: -1, createdAt: -1 })
+        .populate('supplierId', 'name phone address supplierCode')
         .populate('createdBy', 'name')
         .lean()
     ]);

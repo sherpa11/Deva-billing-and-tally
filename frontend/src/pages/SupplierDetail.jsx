@@ -70,7 +70,16 @@ const SupplierDetail = ({ supplierId, onBack }) => {
     return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
   };
 
-  if (!supplier) return <div className="p-8 text-center text-content-secondary">Loading supplier details...</div>;
+  if (loading && !supplier) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-forest-700">
+        <div className="w-8 h-8 border-3 border-forest-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <span className="text-xs font-bold font-tamil text-slate-600">விவசாயி விபரம் ஏற்றுகிறது... (Loading Supplier Ledger...)</span>
+      </div>
+    );
+  }
+
+  if (!supplier) return <div className="p-8 text-center text-content-secondary">விவசாயி கிடைக்கவில்லை (Supplier not found)</div>;
 
   return (
     <div className="space-y-6">
@@ -163,7 +172,16 @@ const SupplierDetail = ({ supplierId, onBack }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border">
-              {bills.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-10 text-content-secondary">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-forest-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs font-semibold">பில்கள் ஏற்றுகிறது... (Loading bills...)</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : bills.length > 0 ? (
                 bills.map((b) => (
                   <tr key={b._id} className="hover:bg-surface-hover">
                     <td className="py-3 px-4 font-bold text-content-main">
@@ -203,7 +221,13 @@ const SupplierDetail = ({ supplierId, onBack }) => {
                     <td className="py-3 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
-                          onClick={() => setPrintBill(b)}
+                          onClick={() => setPrintBill({
+                            ...b,
+                            supplierId: b.supplierId || supplier,
+                            supplierName: b.supplierId?.name || supplier?.name,
+                            supplierPhone: b.supplierId?.phone || supplier?.phone,
+                            supplierAddress: b.supplierId?.address || supplier?.address
+                          })}
                           title="Print Supplier Bill Pad"
                           className="flex items-center gap-1 px-2.5 py-1 bg-forest-50 hover:bg-forest-100 text-forest-700 font-semibold rounded"
                         >
@@ -241,14 +265,23 @@ const SupplierDetail = ({ supplierId, onBack }) => {
         onBillSaved={(bill, shouldPrint) => {
           fetchSupplierPurchases();
           setShowBillModal(false);
-          if (shouldPrint) setPrintBill(bill);
+          if (shouldPrint) {
+            setPrintBill({
+              ...bill,
+              supplierId: bill.supplierId || supplier,
+              supplierName: bill.supplierId?.name || supplier?.name,
+              supplierPhone: bill.supplierId?.phone || supplier?.phone
+            });
+          }
         }}
+        defaultSupplierId={supplier?._id}
       />
 
       <SupplierPrintModal
         isOpen={Boolean(printBill)}
         onClose={() => setPrintBill(null)}
         bill={printBill}
+        supplier={supplier}
       />
     </div>
   );

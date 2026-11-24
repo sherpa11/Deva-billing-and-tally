@@ -57,10 +57,8 @@ exports.createSupplierBill = async (req, res, next) => {
 
     grossTotal = Math.round(grossTotal * 100) / 100;
 
-    // Deductions
-    const commission = deductions.commission !== undefined && deductions.commission !== null && deductions.commission !== ''
-      ? Number(deductions.commission)
-      : Math.round(grossTotal * 0.10);
+    // Deductions (Explicitly entered by user; default to 0 if not provided or disabled)
+    const commission = Number(deductions.commission) || 0;
     const gate = Number(deductions.gate) || 0;
     const coolie = Number(deductions.coolie) || 0;
     const rent = Number(deductions.rent) || 0;
