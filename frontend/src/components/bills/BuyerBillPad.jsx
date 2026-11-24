@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
  * overlays readable transaction data into the exact blank fields using 100% self-contained
  * inline styles. Sized to 138mm x 195.4mm for physical A5 single-sheet printing.
  */
-const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
+const BuyerBillPad = React.forwardRef(({ bill, buyer, settings = {} }, ref) => {
   const [imageReady, setImageReady] = useState(false);
 
   useEffect(() => {
@@ -44,8 +44,22 @@ const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
     return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const buyerName = bill.buyerId?.name || bill.buyerName || 'வாடிக்கையாளர்';
-  const buyerPhone = bill.buyerId?.phone || bill.buyerPhone || '';
+  const resolvedBuyer = (bill.buyerId && typeof bill.buyerId === 'object')
+    ? bill.buyerId
+    : (buyer && typeof buyer === 'object')
+      ? buyer
+      : (bill.buyer && typeof bill.buyer === 'object')
+        ? bill.buyer
+        : null;
+
+  const buyerName = bill.buyerName
+    || resolvedBuyer?.name
+    || (typeof bill.buyerId === 'string' && buyer?.name ? buyer.name : '')
+    || '';
+  const buyerPhone = bill.buyerPhone
+    || resolvedBuyer?.phone
+    || (typeof bill.buyerId === 'string' && buyer?.phone ? buyer.phone : '')
+    || '';
   const billNo = bill.billNumber || bill.transactionNumber || '';
   const dateFormatted = formatDate(bill.transactionDate || bill.date || bill.createdAt);
 

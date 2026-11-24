@@ -241,7 +241,13 @@ const BuyerDetail = ({ buyerId, onBack }) => {
                       <div className="flex items-center justify-center gap-1">
                         {t.type === 'SALE' && (
                           <button
-                            onClick={() => setPrintBill(t)}
+                            onClick={() => setPrintBill({
+                              ...t,
+                              buyerId: (t.buyerId && typeof t.buyerId === 'object') ? t.buyerId : buyer,
+                              buyerName: (typeof t.buyerId === 'object' && t.buyerId?.name) || buyer?.name || t.buyerName,
+                              buyerPhone: (typeof t.buyerId === 'object' && t.buyerId?.phone) || buyer?.phone || t.buyerPhone,
+                              buyerAddress: (typeof t.buyerId === 'object' && t.buyerId?.address) || buyer?.address || t.buyerAddress
+                            })}
                             title="Print Tamil Bill"
                             className="p-1.5 text-content-secondary hover:text-forest-600 hover:bg-forest-50 rounded transition-colors"
                           >
@@ -290,14 +296,24 @@ const BuyerDetail = ({ buyerId, onBack }) => {
         onBillSaved={(bill, shouldPrint) => {
           fetchBuyerLedger();
           setShowBillModal(false);
-          if (shouldPrint) setPrintBill(bill);
+          if (shouldPrint) {
+            setPrintBill({
+              ...bill,
+              buyerId: (bill.buyerId && typeof bill.buyerId === 'object') ? bill.buyerId : buyer,
+              buyerName: (typeof bill.buyerId === 'object' && bill.buyerId?.name) || buyer?.name || bill.buyerName,
+              buyerPhone: (typeof bill.buyerId === 'object' && bill.buyerId?.phone) || buyer?.phone || bill.buyerPhone,
+              buyerAddress: (typeof bill.buyerId === 'object' && bill.buyerId?.address) || buyer?.address || bill.buyerAddress
+            });
+          }
         }}
+        defaultBuyerId={buyer?._id}
       />
 
       <BuyerPrintModal
         isOpen={Boolean(printBill)}
         onClose={() => setPrintBill(null)}
         bill={printBill}
+        buyer={buyer}
       />
 
       <StatementPrintModal

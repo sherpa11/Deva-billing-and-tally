@@ -77,6 +77,7 @@ exports.getBuyerById = async (req, res, next) => {
       })
         .sort({ transactionDate: -1, createdAt: -1 })
         .limit(20)
+        .populate('buyerId', 'name phone address buyerCode')
         .populate('createdBy', 'name')
         .lean()
     ]);
@@ -190,6 +191,7 @@ exports.getBuyerLedger = async (req, res, next) => {
       Buyer.findById(req.params.id).lean(),
       Transaction.find(filter)
         .sort({ transactionDate: 1, createdAt: 1 })
+        .populate('buyerId', 'name phone address buyerCode')
         .populate('createdBy', 'name')
         .lean()
     ]);

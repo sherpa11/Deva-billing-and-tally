@@ -565,9 +565,17 @@ const Buyers = ({ onSelectBuyer }) => {
           isOpen={Boolean(selectedBuyerForBill)}
           onClose={() => setSelectedBuyerForBill(null)}
           onBillSaved={(bill, shouldPrint) => {
+            const currentBuyer = buyers.find((b) => b._id === selectedBuyerForBill);
             fetchBuyers();
             setSelectedBuyerForBill(null);
-            if (shouldPrint) setPrintBill(bill);
+            if (shouldPrint) {
+              setPrintBill({
+                ...bill,
+                buyerId: (bill.buyerId && typeof bill.buyerId === 'object') ? bill.buyerId : currentBuyer,
+                buyerName: (typeof bill.buyerId === 'object' && bill.buyerId?.name) || currentBuyer?.name || bill.buyerName,
+                buyerPhone: (typeof bill.buyerId === 'object' && bill.buyerId?.phone) || currentBuyer?.phone || bill.buyerPhone
+              });
+            }
           }}
           defaultBuyerId={selectedBuyerForBill}
         />
@@ -578,6 +586,7 @@ const Buyers = ({ onSelectBuyer }) => {
         isOpen={Boolean(printBill)}
         onClose={() => setPrintBill(null)}
         bill={printBill}
+        buyer={printBill?.buyerId && typeof printBill.buyerId === 'object' ? printBill.buyerId : buyers.find((b) => b._id === (printBill?.buyerId?._id || printBill?.buyerId))}
       />
     </div>
   );

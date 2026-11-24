@@ -5,7 +5,7 @@ import { useSettings } from '../context/SettingsContext';
 import { downloadBillImage } from '../utils/billImageDownload';
 import BuyerBillPad from './bills/BuyerBillPad';
 
-const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
+const BuyerPrintModal = ({ isOpen, onClose, bill, buyer }) => {
   const { settings, fetchSettings } = useSettings();
   const printAreaRef = useRef();
   const dropdownRef = useRef();
@@ -58,7 +58,12 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
     if (!printAreaRef.current) return;
 
     setIsDownloadingImage(true);
-    const safeBuyerName = (bill.buyerId?.name || bill.buyerName || 'Buyer')
+    const resolvedBuyer = (bill.buyerId && typeof bill.buyerId === 'object')
+      ? bill.buyerId
+      : (buyer && typeof buyer === 'object')
+        ? buyer
+        : null;
+    const safeBuyerName = (bill.buyerName || resolvedBuyer?.name || 'Buyer')
       .trim()
       .replace(/[\/\s]+/g, '_')
       .replace(/[^a-zA-Z0-9_\-\u0B80-\u0BFF]/g, '');
@@ -179,7 +184,7 @@ const BuyerPrintModal = ({ isOpen, onClose, bill }) => {
           {/* Printable Bill Area Container */}
           <div className="buyer-modal-body p-4 sm:p-6 overflow-x-auto flex justify-center bg-slate-100/60">
             {/* EXACT MASTER REFERENCE BUYER BILL PAD */}
-            <BuyerBillPad ref={printAreaRef} bill={bill} settings={settings} />
+            <BuyerBillPad ref={printAreaRef} bill={bill} buyer={buyer || bill?.buyerId} settings={settings} />
           </div>
         </div>
       </div>
