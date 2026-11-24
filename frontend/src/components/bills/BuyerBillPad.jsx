@@ -125,10 +125,10 @@ const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
         style={{
           position: 'absolute',
           zIndex: 10,
-          top: '17.8%',
+          top: '18.7%',
           left: '12.5%',
           width: '51.0%',
-          height: '3.8%',
+          height: '3.6%',
           display: 'flex',
           alignItems: 'center',
           paddingLeft: '6px',
@@ -148,7 +148,7 @@ const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
             letterSpacing: '-0.2px'
           }}
         >
-          {buyerName} {buyerPhone ? `(${buyerPhone})` : ''} {billNo ? `(பில்: #${billNo})` : ''}
+          {buyerName} {buyerPhone ? `(${buyerPhone})` : ''}
         </span>
       </div>
 
@@ -157,10 +157,10 @@ const BuyerBillPad = React.forwardRef(({ bill, settings = {} }, ref) => {
         style={{
           position: 'absolute',
           zIndex: 10,
-          top: '17.8%',
+          top: '18.7%',
           left: '73.5%',
           width: '22.5%',
-          height: '3.8%',
+          height: '3.6%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

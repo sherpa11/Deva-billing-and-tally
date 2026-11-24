@@ -16,8 +16,8 @@ import { toBlob, toPng } from 'html-to-image';
 export async function downloadBillImage(billElement, options = {}) {
   const {
     filename = 'Deva_Bill_A5.png',
-    targetWidthPx = 559.37, // Exact A5 portrait width (148mm @ 96 DPI)
-    targetHeightPx = 793.70, // Exact A5 portrait height (210mm @ 96 DPI)
+    targetWidthPx = 723, // Exact master reference bill width (723px)
+    targetHeightPx = 1024, // Exact master reference bill height (1024px)
     shareTitle = 'DEVA & CO Bill',
     onStatusChange = () => {}
   } = options;
@@ -38,9 +38,16 @@ export async function downloadBillImage(billElement, options = {}) {
     exportContainer.style.left = '-99999px';
     exportContainer.style.top = '0';
     exportContainer.style.width = `${targetWidthPx}px`;
+    exportContainer.style.minWidth = `${targetWidthPx}px`;
+    exportContainer.style.maxWidth = `${targetWidthPx}px`;
     exportContainer.style.height = targetHeightPx ? `${targetHeightPx}px` : 'auto';
+    if (targetHeightPx) {
+      exportContainer.style.minHeight = `${targetHeightPx}px`;
+      exportContainer.style.maxHeight = `${targetHeightPx}px`;
+    }
     exportContainer.style.margin = '0';
     exportContainer.style.padding = '0';
+    exportContainer.style.boxSizing = 'border-box';
     exportContainer.style.overflow = 'hidden';
     exportContainer.style.background = '#ffffff';
     exportContainer.style.zIndex = '-9999';
@@ -50,12 +57,18 @@ export async function downloadBillImage(billElement, options = {}) {
     const clone = billElement.cloneNode(true);
     clone.style.transform = 'none';
     clone.style.margin = '0';
+    clone.style.padding = '0';
+    clone.style.boxSizing = 'border-box';
     clone.style.boxShadow = 'none';
+    clone.style.border = 'none';
+    clone.style.borderRadius = '0';
     clone.style.width = `${targetWidthPx}px`;
+    clone.style.minWidth = `${targetWidthPx}px`;
+    clone.style.maxWidth = `${targetWidthPx}px`;
     if (targetHeightPx) {
       clone.style.height = `${targetHeightPx}px`;
-      clone.style.maxHeight = `${targetHeightPx}px`;
       clone.style.minHeight = `${targetHeightPx}px`;
+      clone.style.maxHeight = `${targetHeightPx}px`;
     }
 
     exportContainer.appendChild(clone);
@@ -70,7 +83,7 @@ export async function downloadBillImage(billElement, options = {}) {
       }
     }
 
-    // Ensure all images (such as DEVA logo) inside the cloned bill are 100% loaded
+    // Ensure all images (such as DEVA logo and bill template background) inside the cloned bill are 100% loaded
     const imgElements = Array.from(clone.querySelectorAll('img'));
     await Promise.all(
       imgElements.map((img) => {
@@ -89,24 +102,33 @@ export async function downloadBillImage(billElement, options = {}) {
     // Measure height if not fixed
     const captureHeight = targetHeightPx || clone.offsetHeight || clone.scrollHeight || targetWidthPx;
 
-    // Generate high-resolution (3x) PNG blob
+    // Generate high-resolution (3x) PNG blob with clean zero margins
     let blob = null;
+    const captureOptions = {
+      pixelRatio: 3,
+      width: targetWidthPx,
+      height: captureHeight,
+      backgroundColor: '#ffffff',
+      cacheBust: false,
+      style: {
+        margin: '0',
+        padding: '0',
+        width: `${targetWidthPx}px`,
+        minWidth: `${targetWidthPx}px`,
+        maxWidth: `${targetWidthPx}px`,
+        height: `${captureHeight}px`,
+        minHeight: `${captureHeight}px`,
+        maxHeight: `${captureHeight}px`,
+        transform: 'none',
+        boxShadow: 'none'
+      }
+    };
+
     try {
-      blob = await toBlob(clone, {
-        pixelRatio: 3,
-        width: targetWidthPx,
-        height: captureHeight,
-        backgroundColor: '#ffffff',
-        cacheBust: false
-      });
+      blob = await toBlob(clone, captureOptions);
     } catch (blobErr) {
       console.warn('[billImageDownload] toBlob direct capture fallback to toPng:', blobErr);
-      const dataUrl = await toPng(clone, {
-        pixelRatio: 3,
-        width: targetWidthPx,
-        height: captureHeight,
-        backgroundColor: '#ffffff'
-      });
+      const dataUrl = await toPng(clone, captureOptions);
       const resp = await fetch(dataUrl);
       blob = await resp.blob();
     }
