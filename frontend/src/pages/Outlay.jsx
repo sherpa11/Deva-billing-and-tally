@@ -3,6 +3,7 @@ import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { ReceiptText, Plus, Trash2, Calendar } from 'lucide-react';
 import ExpenseModal from '../components/ExpenseModal';
+import { formatTime } from '../utils/dateUtils';
 
 const Outlay = ({ selectedDate }) => {
   const { isAdmin } = useAuth();
@@ -114,7 +115,7 @@ const Outlay = ({ selectedDate }) => {
                 expenses.map((e) => (
                   <tr key={e._id} className="hover:bg-surface-hover">
                     <td className="py-3 px-4 text-content-secondary whitespace-nowrap">
-                      {new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatTime(e)}
                     </td>
                     <td className="py-3 px-4">
                       <span className="bg-surface-bg text-content-main px-2 py-0.5 rounded text-[11px] font-medium border border-surface-border">

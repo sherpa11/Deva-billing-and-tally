@@ -1,6 +1,7 @@
 const SupplierBill = require('../models/SupplierBill');
 const Supplier = require('../models/Supplier');
 const { getNextSequenceValue } = require('../models/Counter');
+const { parseTransactionDate } = require('../utils/dateUtils');
 
 exports.createSupplierBill = async (req, res, next) => {
   try {
@@ -88,7 +89,7 @@ exports.createSupplierBill = async (req, res, next) => {
     const bill = new SupplierBill({
       billNumber,
       supplierId: supplier._id,
-      transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
+      transactionDate: parseTransactionDate(transactionDate),
       items: processedItems,
       grossTotal,
       deductions: {

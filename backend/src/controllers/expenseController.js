@@ -1,4 +1,5 @@
 const Expense = require('../models/Expense');
+const { parseTransactionDate } = require('../utils/dateUtils');
 
 exports.getExpenses = async (req, res, next) => {
   try {
@@ -49,7 +50,7 @@ exports.createExpense = async (req, res, next) => {
     }
 
     const expense = await Expense.create({
-      date: date ? new Date(date) : new Date(),
+      date: parseTransactionDate(date),
       purpose: purpose.trim(),
       amount: Number(amount),
       category: category || 'GENERAL',

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Calendar, Printer, Trash2 } from 'lucide-react';
 import BuyerPrintModal from '../components/BuyerPrintModal';
 import SupplierPrintModal from '../components/SupplierPrintModal';
+import { formatTime as formatTimeIST, formatDate } from '../utils/dateUtils';
 
 const History = ({ selectedDate }) => {
   const { isAdmin } = useAuth();
@@ -55,10 +56,8 @@ const History = ({ selectedDate }) => {
     }
   };
 
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (recordOrTimestamp) => {
+    return formatTimeIST(recordOrTimestamp);
   };
 
   return (
@@ -144,7 +143,7 @@ const History = ({ selectedDate }) => {
                 {sales.length > 0 ? (
                   sales.map((s) => (
                     <tr key={s._id} className="hover:bg-surface-hover">
-                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(s.transactionDate)}</td>
+                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(s)}</td>
                       <td className="py-3 px-4 font-bold text-content-main">#{s.billNumber}</td>
                       <td className="py-3 px-4 font-semibold text-content-main font-tamil">{s.buyerId?.name || '—'}</td>
                       <td className="py-3 px-4 text-center text-content-secondary">
@@ -205,7 +204,7 @@ const History = ({ selectedDate }) => {
                 {payments.length > 0 ? (
                   payments.map((p) => (
                     <tr key={p._id} className="hover:bg-surface-hover">
-                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(p.transactionDate)}</td>
+                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(p)}</td>
                       <td className="py-3 px-4 font-semibold text-content-main font-tamil">{p.buyerId?.name || '—'}</td>
                       <td className="py-3 px-4">
                         <span className="bg-surface-bg text-content-main px-2 py-0.5 rounded text-[11px] font-medium border border-surface-border">
@@ -258,7 +257,7 @@ const History = ({ selectedDate }) => {
                 {purchases.length > 0 ? (
                   purchases.map((pc) => (
                     <tr key={pc._id} className="hover:bg-surface-hover">
-                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(pc.transactionDate)}</td>
+                      <td className="py-3 px-4 text-content-secondary whitespace-nowrap">{formatTime(pc)}</td>
                       <td className="py-3 px-4 font-bold text-content-main">#{pc.billNumber}</td>
                       <td className="py-3 px-4 font-semibold text-content-main font-tamil">{pc.supplierId?.name || '—'}</td>
                       <td className="py-3 px-4 font-tamil">

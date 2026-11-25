@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Buyer = require('../models/Buyer');
 const { getNextSequenceValue } = require('../models/Counter');
+const { parseTransactionDate } = require('../utils/dateUtils');
 
 exports.createSale = async (req, res, next) => {
   try {
@@ -91,7 +92,7 @@ exports.createSale = async (req, res, next) => {
       billNumber,
       buyerId: buyer._id,
       type: 'SALE',
-      transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
+      transactionDate: parseTransactionDate(transactionDate),
       bigBoxes: numBig,
       smallBoxes: numSmall,
       bigEquivalent,
@@ -165,7 +166,7 @@ exports.createPayment = async (req, res, next) => {
       transactionNumber,
       buyerId: buyer._id,
       type: 'PAYMENT',
-      transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
+      transactionDate: parseTransactionDate(transactionDate),
       oldBalance: oldBal,
       totalDue: oldBal,
       amountPaid: numPaid,

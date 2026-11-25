@@ -1,5 +1,6 @@
 const Supplier = require('../models/Supplier');
 const SupplierBill = require('../models/SupplierBill');
+const SupplierPayment = require('../models/SupplierPayment');
 const { getNextSequenceValue } = require('../models/Counter');
 
 exports.getSuppliers = async (req, res, next) => {
@@ -119,23 +120,34 @@ exports.getSupplierPurchases = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
 
-    let filter = { supplierId: req.params.id, isVoid: false };
+    let billFilter = { supplierId: req.params.id, isVoid: false };
+    let paymentFilter = { supplierId: req.params.id, isVoid: false };
+
     if (startDate || endDate) {
-      filter.transactionDate = {};
+      billFilter.transactionDate = {};
+      paymentFilter.paymentDate = {};
       if (startDate) {
-        filter.transactionDate.$gte = new Date(startDate);
+        const start = new Date(startDate);
+        billFilter.transactionDate.$gte = start;
+        paymentFilter.paymentDate.$gte = start;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        filter.transactionDate.$lte = end;
+        billFilter.transactionDate.$lte = end;
+        paymentFilter.paymentDate.$lte = end;
       }
     }
 
-    const [supplier, bills] = await Promise.all([
+    const [supplier, bills, payments] = await Promise.all([
       Supplier.findById(req.params.id).lean(),
-      SupplierBill.find(filter)
+      SupplierBill.find(billFilter)
         .sort({ transactionDate: -1, createdAt: -1 })
+        .populate('supplierId', 'name phone address supplierCode')
+        .populate('createdBy', 'name')
+        .lean(),
+      SupplierPayment.find(paymentFilter)
+        .sort({ paymentDate: -1, createdAt: -1 })
         .populate('supplierId', 'name phone address supplierCode')
         .populate('createdBy', 'name')
         .lean()
@@ -145,10 +157,71 @@ exports.getSupplierPurchases = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'விவசாயி / சப்ளையர் கிடைக்கவில்லை' });
     }
 
+    // Merge purchases and payments into a unified ledger
+    const merged = [
+      ...bills.map((b) => ({
+        _id: b._id,
+        type: 'PURCHASE',
+        billNumber: b.billNumber,
+        date: b.transactionDate,
+        createdAt: b.createdAt,
+        particulars: b.items && b.items.length > 0
+          ? b.items.map((it) => `${it.description || 'தக்காளி'} (${it.quantity || it.bigEquivalent || 0} @ ₹${it.rate || 0})`).join(', ')
+          : 'Purchase Bill',
+        items: b.items,
+        grossTotal: b.grossTotal || 0,
+        totalDeductions: b.totalDeductions || 0,
+        purchaseAmount: b.grossTotal - (b.totalDeductions || 0),
+        paymentAmount: b.amountPaid || 0,
+        recordedOldBalance: b.previousBalance !== undefined ? b.previousBalance : b.oldBalance,
+        recordedNewBalance: b.remainingBalance !== undefined ? b.remainingBalance : b.newBalance,
+        raw: b
+      })),
+      ...payments.map((p) => ({
+        _id: p._id,
+        type: 'PAYMENT',
+        paymentNumber: p.paymentNumber,
+        date: p.paymentDate,
+        createdAt: p.createdAt,
+        particulars: p.notes
+          ? `பட்டுவாடா (${p.paymentMode || 'CASH'}) - ${p.notes}`
+          : `பட்டுவாடா (${p.paymentMode || 'CASH'})`,
+        paymentMode: p.paymentMode,
+        grossTotal: 0,
+        totalDeductions: 0,
+        purchaseAmount: 0,
+        paymentAmount: p.amountPaid || 0,
+        recordedOldBalance: p.oldBalance,
+        recordedNewBalance: p.newBalance,
+        raw: p
+      }))
+    ];
+
+    // Sort ascending by date/timestamp to calculate chronological running balance
+    merged.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let running = 0;
+    const ledger = merged.map((item) => {
+      if (item.type === 'PURCHASE') {
+        running = Math.round((running + item.purchaseAmount - item.paymentAmount) * 100) / 100;
+      } else {
+        running = Math.round((running - item.paymentAmount) * 100) / 100;
+      }
+      return {
+        ...item,
+        runningBalance: running
+      };
+    });
+
+    // Reverse for descending (newest first) display
+    const ledgerDescending = [...ledger].reverse();
+
     res.json({
       success: true,
       supplier,
-      bills
+      bills,
+      payments,
+      ledger: ledgerDescending
     });
   } catch (error) {
     next(error);

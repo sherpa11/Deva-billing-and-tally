@@ -19,6 +19,7 @@ import SupplierBillingModal from '../components/SupplierBillingModal';
 import ExpenseModal from '../components/ExpenseModal';
 import BuyerPrintModal from '../components/BuyerPrintModal';
 import SupplierPrintModal from '../components/SupplierPrintModal';
+import { formatTime as formatTimeIST, formatDate as formatDateUtil } from '../utils/dateUtils';
 
 const Dashboard = ({ selectedDate }) => {
   const { isAdmin } = useAuth();
@@ -104,10 +105,8 @@ const Dashboard = ({ selectedDate }) => {
     return `${dt.getDate().toString().padStart(2, '0')}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getFullYear()}`;
   };
 
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (recordOrTimestamp) => {
+    return formatTimeIST(recordOrTimestamp);
   };
 
   return (
@@ -314,7 +313,7 @@ const Dashboard = ({ selectedDate }) => {
                   return (
                     <tr key={t._id} className="pleasant-table-row transition-colors">
                       <td className="py-2 px-3 text-content-secondary whitespace-nowrap text-xs">
-                        {formatTime(t.transactionDate || t.createdAt)}
+                        {formatTime(t)}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         <span
@@ -444,7 +443,7 @@ const Dashboard = ({ selectedDate }) => {
                         #{sb.billNumber}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap text-content-secondary">
-                        {formatTime(sb.transactionDate || sb.createdAt)}
+                        {formatTime(sb)}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap font-semibold text-content-main font-tamil">
                         <div>{sb.supplierId?.name || '—'}</div>

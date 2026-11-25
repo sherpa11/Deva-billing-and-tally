@@ -9,11 +9,13 @@ import {
   ChevronRight, 
   Plus,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  Wallet
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import SupplierBillingModal from '../components/SupplierBillingModal';
 import SupplierPrintModal from '../components/SupplierPrintModal';
+import SupplierPaymentModal from '../components/SupplierPaymentModal';
 
 const Suppliers = ({ onSelectSupplier }) => {
   const [suppliers, setSuppliers] = useState([]);
@@ -32,6 +34,10 @@ const Suppliers = ({ onSelectSupplier }) => {
   // Bill entry modal
   const [selectedSupplierForBill, setSelectedSupplierForBill] = useState(null);
   const [printBill, setPrintBill] = useState(null);
+
+  // Supplier Payment modal
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [selectedSupplierForPay, setSelectedSupplierForPay] = useState(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -119,6 +125,7 @@ const Suppliers = ({ onSelectSupplier }) => {
     .filter(s => s.isActive !== false)
     .reduce((s, sup) => s + (sup.currentBalance > 0 ? sup.currentBalance : 0), 0);
   const totalPurchases = suppliers.reduce((s, sup) => s + (sup.totalPurchases || 0), 0);
+  const totalSupplierPayments = suppliers.reduce((s, sup) => s + (sup.totalPayments || 0), 0);
 
   return (
     <div className="space-y-3.5 sm:space-y-4">
@@ -140,6 +147,18 @@ const Suppliers = ({ onSelectSupplier }) => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => {
+              setSelectedSupplierForPay(null);
+              setShowPayModal(true);
+            }}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-8 sm:h-8.5 px-3 bg-white border border-surface-border text-content-main hover:bg-surface-hover rounded-lg text-xs font-medium transition-all whitespace-nowrap active:scale-[0.98]"
+            title="Record payment made to supplier"
+          >
+            <Wallet className="w-3.5 h-3.5 text-content-secondary" />
+            <span>Payment</span>
+          </button>
+
+          <button
             onClick={() => setSelectedSupplierForBill('NEW')}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-8 sm:h-8.5 px-3 bg-white border border-surface-border text-content-main hover:bg-surface-hover rounded-lg text-xs font-medium transition-all whitespace-nowrap active:scale-[0.98]"
           >
@@ -157,16 +176,26 @@ const Suppliers = ({ onSelectSupplier }) => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+      {/* Summary Cards: 4 Metric Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-surface-border shadow-subtle pleasant-card">
           <div className="text-[11px] font-medium text-content-secondary">Total Payable to Farmers</div>
-          <div className="text-lg sm:text-xl font-bold text-content-main mt-0.5">₹{totalSupplierPayable.toLocaleString('en-IN')}</div>
+          <div className="text-base sm:text-lg font-bold text-content-main mt-0.5">₹{totalSupplierPayable.toLocaleString('en-IN')}</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-surface-border shadow-subtle pleasant-card">
           <div className="text-[11px] font-medium text-content-secondary">Cumulative Purchases</div>
-          <div className="text-lg sm:text-xl font-bold text-forest-600 mt-0.5">₹{totalPurchases.toLocaleString('en-IN')}</div>
+          <div className="text-base sm:text-lg font-bold text-forest-600 mt-0.5">₹{totalPurchases.toLocaleString('en-IN')}</div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-surface-border shadow-subtle pleasant-card">
+          <div className="text-[11px] font-medium text-content-secondary">Total Supplier Payments</div>
+          <div className="text-base sm:text-lg font-bold text-forest-700 mt-0.5">₹{totalSupplierPayments.toLocaleString('en-IN')}</div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-surface-border shadow-subtle pleasant-card">
+          <div className="text-[11px] font-medium text-content-secondary">Outstanding Supplier Balance</div>
+          <div className="text-base sm:text-lg font-bold text-status-warning mt-0.5">₹{totalSupplierPayable.toLocaleString('en-IN')}</div>
         </div>
       </div>
 
@@ -280,17 +309,29 @@ const Suppliers = ({ onSelectSupplier }) => {
               </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-surface-border flex items-center justify-between gap-2">
+            <div className="mt-3 pt-2.5 border-t border-surface-border flex items-center justify-between gap-1.5">
               <button
                 onClick={() => setSelectedSupplierForBill(s._id)}
-                className="flex-1 py-1.5 px-2 bg-surface-bg hover:bg-surface-hover text-content-main rounded-md text-xs font-semibold transition-colors"
+                className="flex-1 py-1.5 px-2 bg-surface-bg hover:bg-surface-hover text-content-main rounded-md text-xs font-semibold transition-colors truncate"
               >
                 + New Purchase
               </button>
 
               <button
+                onClick={() => {
+                  setSelectedSupplierForPay(s._id);
+                  setShowPayModal(true);
+                }}
+                className="py-1.5 px-2.5 bg-forest-50 hover:bg-forest-100 text-forest-700 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition-colors shrink-0"
+                title={`Record payment for ${s.name}`}
+              >
+                <Wallet className="w-3 h-3 text-forest-600" />
+                <span>Pay</span>
+              </button>
+
+              <button
                 onClick={() => onSelectSupplier(s._id)}
-                className="py-1.5 px-3 bg-content-main hover:bg-black text-white rounded-md text-xs font-semibold flex items-center gap-1 transition-colors"
+                className="py-1.5 px-2.5 bg-content-main hover:bg-black text-white rounded-md text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
               >
                 Details <ChevronRight className="w-3 h-3" />
               </button>
@@ -405,6 +446,23 @@ const Suppliers = ({ onSelectSupplier }) => {
         onClose={() => setPrintBill(null)}
         bill={printBill}
       />
+
+      {/* Supplier Payment Modal */}
+      {showPayModal && (
+        <SupplierPaymentModal
+          isOpen={showPayModal}
+          onClose={() => {
+            setShowPayModal(false);
+            setSelectedSupplierForPay(null);
+          }}
+          onPaymentSaved={() => {
+            fetchSuppliers();
+            setShowPayModal(false);
+            setSelectedSupplierForPay(null);
+          }}
+          defaultSupplierId={selectedSupplierForPay}
+        />
+      )}
     </div>
   );
 };
